@@ -85,6 +85,34 @@ def test_model_manager_defaults_low_vram_profiles_to_disk_offload(monkeypatch):
     assert manager._offload_mode("colab_balanced") is None
 
 
+def test_model_manager_prefers_from_config_when_config_path_exists():
+    calls = []
+
+    class FakePipeline:
+        @classmethod
+        def from_config(cls, config_path, quantization=None, offload_mode=None):
+            calls.append({
+                "config_path": config_path,
+                "quantization": quantization,
+                "offload_mode": offload_mode,
+            })
+            return cls()
+
+    manager = ModelManager(lambda *_args: None)
+    pipeline = manager._load_from_config(
+        FakePipeline,
+        {"config_path": "/content/models/config.yaml"},
+        {"quantization": "q"},
+        "disk",
+    )
+    assert isinstance(pipeline, FakePipeline)
+    assert calls == [{
+        "config_path": "/content/models/config.yaml",
+        "quantization": "q",
+        "offload_mode": "disk",
+    }]
+
+
 def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     class InferenceMode:
         def __enter__(self):

@@ -21,10 +21,10 @@ class ModelManager:
         pipeline_cls = self._find_pipeline(model_key, profile)
         kwargs = self._quantization_kwargs(model_entry)
         offload_mode = self._offload_mode(profile)
-        if pipeline_cls.__name__ == "DistilledPipeline":
+        if model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
+            self.pipeline = self._load_from_config(pipeline_cls, model_entry, kwargs, offload_mode)
+        elif pipeline_cls.__name__ == "DistilledPipeline":
             self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs, offload_mode)
-        elif model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
-            self.pipeline = pipeline_cls.from_config(model_entry["config_path"], **kwargs)
         elif hasattr(pipeline_cls, "from_config"):
             raise WorkerError("unsupported_pipeline", "this pipeline requires config_path in the model registry")
         else:
@@ -66,6 +66,13 @@ class ModelManager:
         if mode == "fp8-scaled-mm":
             return {"quantization": QuantizationPolicy.fp8_scaled_mm()}
         raise WorkerError("unsupported_option", f"unsupported quantization mode: {mode}")
+
+    def _load_from_config(self, pipeline_cls, model_entry, kwargs, offload_mode):
+        config_kwargs = dict(kwargs)
+        signature = inspect.signature(pipeline_cls.from_config)
+        if offload_mode is not None and "offload_mode" in signature.parameters:
+            config_kwargs["offload_mode"] = offload_mode
+        return pipeline_cls.from_config(model_entry["config_path"], **config_kwargs)
 
     def _load_distilled_pipeline(self, pipeline_cls, model_entry, kwargs, offload_mode):
         checkpoint_path = model_entry.get("checkpoint_path")
