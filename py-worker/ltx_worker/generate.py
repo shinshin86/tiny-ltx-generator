@@ -42,11 +42,11 @@ class Generator:
             kwargs["fps"] = float(request["fps"])
         if "frame_rate" in call_signature.parameters:
             kwargs["frame_rate"] = float(request["fps"])
-        if request.get("negative_prompt"):
+        if request.get("negative_prompt") and _accepts_parameter(call_signature, "negative_prompt"):
             kwargs["negative_prompt"] = request["negative_prompt"]
-        if request.get("guidance_scale") is not None:
+        if request.get("guidance_scale") is not None and _accepts_parameter(call_signature, "guidance_scale"):
             kwargs["guidance_scale"] = request["guidance_scale"]
-        if request.get("steps") is not None:
+        if request.get("steps") is not None and _accepts_parameter(call_signature, "num_inference_steps"):
             kwargs["num_inference_steps"] = request["steps"]
         if "images" in call_signature.parameters:
             kwargs["images"] = []
@@ -119,3 +119,12 @@ def _image_conditioning_input(path):
         return ImageConditioningInput(path=str(path), frame_idx=0, strength=1.0)
     except Exception:
         return (str(path), 0, 1.0)
+
+
+def _accepts_parameter(signature, name):
+    if name in signature.parameters:
+        return True
+    return any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )

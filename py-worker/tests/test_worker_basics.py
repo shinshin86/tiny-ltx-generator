@@ -204,6 +204,62 @@ def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     assert calls[0]["num_inference_steps"] == 8
 
 
+def test_generator_skips_unsupported_optional_pipeline_kwargs(monkeypatch):
+    class InferenceMode:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    calls = []
+
+    class RestrictedPipeline:
+        def __call__(self, prompt, width, height, num_frames, seed):
+            calls.append({
+                "prompt": prompt,
+                "width": width,
+                "height": height,
+                "num_frames": num_frames,
+                "seed": seed,
+            })
+            return object()
+
+    fake_torch = types.SimpleNamespace(inference_mode=lambda: InferenceMode())
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("ltx_worker.generate.persist_result", lambda _result, path, **_kwargs: path)
+
+    generator = Generator(lambda *_args: None)
+    generator.models.pipeline = RestrictedPipeline()
+    generator.models.load = lambda *_args: None
+
+    result = generator.generate("req", {
+        "request": {
+            "mode": "text-to-video",
+            "prompt": "hello",
+            "negative_prompt": "blurry",
+            "width": 512,
+            "height": 512,
+            "frames": 33,
+            "fps": 8,
+            "seed": 123,
+            "steps": 8,
+            "guidance_scale": 1.0,
+            "output_path": "/tmp/out.mp4",
+        },
+        "model": {"id": "model-a"},
+    })
+
+    assert result["output_path"] == "/tmp/out.mp4"
+    assert calls == [{
+        "prompt": "hello",
+        "width": 512,
+        "height": 512,
+        "num_frames": 33,
+        "seed": 123,
+    }]
+
+
 def test_generator_uses_ltx_image_conditioning_input_for_images_parameter(monkeypatch):
     class FakeImageConditioningInput(tuple):
         def __new__(cls, path, frame_idx, strength, crf=23):
