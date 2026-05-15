@@ -5,7 +5,7 @@ Colab is the Phase 1 target. `/content` is temporary and disappears when the run
 ## Setup
 
 ```bash
-export TINY_LTX_REPO_URL="https://github.com/YOUR_ORG/tiny-ltx-generator.git"
+export TINY_LTX_REPO_URL="https://github.com/shinshin86/tiny-ltx-generator.git"
 git clone "$TINY_LTX_REPO_URL" /content/tiny-ltx-generator
 cd /content/tiny-ltx-generator
 bash scripts/bootstrap_colab.sh --download-models
