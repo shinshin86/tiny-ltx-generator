@@ -27,6 +27,23 @@ fn model_registry_quantization_flags_are_consistent() {
     }
 }
 
+#[test]
+fn colab_download_scripts_track_default_low_vram_variant() {
+    let download_script = fs::read_to_string("../../scripts/download_models_colab.sh").unwrap();
+    let registry_writer =
+        fs::read_to_string("../../scripts/write_downloaded_model_registry.py").unwrap();
+    let example_registry = fs::read_to_string("../../configs/model_registry.example.toml").unwrap();
+
+    assert!(download_script.contains("VARIANT=\"${LTX_DOWNLOAD_VARIANT:-ltx2_3_distilled_fp8}\""));
+    assert!(download_script.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(registry_writer.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(example_registry.contains("ltx-2.3-22b-distilled.safetensors"));
+
+    assert!(!download_script.contains("ltx-2.3-22b-distilled-1.1.safetensors"));
+    assert!(!registry_writer.contains("ltx-2.3-22b-distilled-1.1.safetensors"));
+    assert!(!example_registry.contains("ltx-2.3-22b-distilled-1.1.safetensors"));
+}
+
 mod ltx_runner_test_types {
     use ltx_core::ModelEntry;
     use serde::Deserialize;
