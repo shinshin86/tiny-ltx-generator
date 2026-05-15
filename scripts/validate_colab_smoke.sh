@@ -9,6 +9,14 @@ fi
 
 bash scripts/test_colab.sh
 ./target/release/ltx-runner check --json >/content/ltx_check.json
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+check = json.loads(Path("/content/ltx_check.json").read_text())
+if check.get("recommended_profile") == "no_gpu":
+    raise SystemExit("Colab smoke validation requires a GPU runtime; recommended_profile is no_gpu")
+PY
 
 VALIDATION_ROOT="${LTX_VALIDATION_ROOT:-/content/ltx_validation}"
 MODEL_DIR="$VALIDATION_ROOT/models"
@@ -57,7 +65,6 @@ LTX_WORKER_TEST_FAIL_MARKER="$MARKER" \
   --steps 30 \
   --out-dir "$OUT_DIR" \
   --model-registry "$REGISTRY" \
-  --jsonl-events \
   --json >"$VALIDATION_ROOT/generate_result.json"
 
 python3 - <<'PY'

@@ -6,7 +6,7 @@ The project itself does not implement any external notebook control protocol. An
 
 ## Required Runtime
 
-Use a Colab GPU runtime. The fake worker validation does not run the real LTX model, but `ltx-runner generate` still performs GPU/profile checks before starting the worker.
+Use a Colab GPU runtime. The fake worker validation does not run the real LTX model, but `ltx-runner generate` still performs GPU/profile checks before starting the worker. `scripts/validate_colab_smoke.sh` fails early when `ltx-runner check --json` reports `recommended_profile = no_gpu`.
 
 ## Cell 1: Clone Or Update
 
