@@ -4,12 +4,14 @@ LTX 2.3 is heavy because video generation holds temporal latents, transformer ac
 
 Profiles:
 
-- `colab_tiny`: lowest memory, 512x512, 33 frames, 8 fps, distilled FP8 preferred
+- `colab_tiny`: lowest memory fallback, 512x512, 33 frames, 8 fps, distilled FP8 preferred
 - `colab_eco`: moderate low memory, 512x512, 49 frames, 12 fps
 - `colab_balanced`: larger Colab GPU, 768x512, 65 frames
 - `colab_quality`: high-memory GPU, 1280x720, longer clips
 
 Audio is disabled by default because it increases memory and runtime. Upscaling is disabled by default in `colab_tiny` and `colab_eco` for the same reason.
+
+For visual quality checks, prefer a landscape LTX-shaped size such as 768x512 or 1280x720. The square 512x512 path exists for memory fallback and smoke tests, not for judging model quality.
 
 FP8 and distilled models reduce memory by shrinking weights and reducing inference steps. If a quantization mode is not exposed by the installed pipeline, the worker returns a structured error instead of silently continuing.
 

@@ -53,8 +53,6 @@ pub fn preferred_models(profile: ProfileId) -> Vec<ModelId> {
         ProfileId::ColabTiny | ProfileId::ColabEco | ProfileId::NoGpu | ProfileId::Auto => vec![
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
-            ModelId::Sulphur2DistilBf16,
-            ModelId::Sulphur2DevFp8Mixed,
             ModelId::Ltx2_3Fp8,
             ModelId::Ltxv13bDistilledFp8,
         ],
@@ -62,18 +60,13 @@ pub fn preferred_models(profile: ProfileId) -> Vec<ModelId> {
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
-            ModelId::Sulphur2DevFp8Mixed,
-            ModelId::Sulphur2DistilBf16,
             ModelId::Ltx2_3Full,
         ],
         ProfileId::ColabQuality => vec![
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3Full,
-            ModelId::Sulphur2DevFp8Mixed,
-            ModelId::Sulphur2DevBf16,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
-            ModelId::Sulphur2DistilBf16,
         ],
     }
 }
@@ -172,14 +165,16 @@ mod tests {
     }
 
     #[test]
-    fn sulphur_models_are_addressable_but_not_first_auto_choice() {
+    fn sulphur_models_are_addressable_but_explicit_only() {
         assert_eq!(
             model_key(ModelId::Sulphur2DevFp8Mixed),
             "sulphur_2_dev_fp8mixed"
         );
         let quality = preferred_models(ProfileId::ColabQuality);
         assert_eq!(quality[0], ModelId::Ltx2_3Fp8);
-        assert!(quality.contains(&ModelId::Sulphur2DevFp8Mixed));
+        assert!(!quality.contains(&ModelId::Sulphur2DevFp8Mixed));
+        assert!(!preferred_models(ProfileId::ColabTiny).contains(&ModelId::Sulphur2DistilBf16));
+        assert!(!preferred_models(ProfileId::ColabBalanced).contains(&ModelId::Sulphur2DevBf16));
     }
 
     #[test]

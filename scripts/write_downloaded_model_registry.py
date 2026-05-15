@@ -101,9 +101,9 @@ notes = "{notes}"
         "Sulphur 2 dev FP8 mixed",
         paths["sulphur_2_dev_fp8mixed"] if enabled == "sulphur_2_dev_fp8mixed" else "",
         True,
-        True,
+        False,
         '["colab_balanced", "colab_quality"]',
-        "Community LTX 2.3-derived FP8 mixed full model. Use explicitly with --model sulphur_2_dev_fp8mixed.",
+        "Experimental community LTX 2.3-derived FP8 mixed full model. Use explicitly with --model sulphur_2_dev_fp8mixed. Loaded without additional fp8-cast until visually validated.",
         spatial_path="",
     )
     registry += entry(

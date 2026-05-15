@@ -100,11 +100,11 @@ temporal_upsampler_path = ""
 supports_audio = true
 supports_t2v = true
 supports_i2v = true
-supports_fp8_cast = true
+supports_fp8_cast = false
 supports_fp8_scaled_mm = false
-quantization = "fp8-cast"
+quantization = "none"
 preferred_profiles = ["colab_balanced", "colab_quality"]
-notes = "Community LTX 2.3-derived FP8 mixed full model from SulphurAI/Sulphur-2-base. Use explicitly with --model sulphur_2_dev_fp8mixed."
+notes = "Experimental community LTX 2.3-derived FP8 mixed full model from SulphurAI/Sulphur-2-base. Use explicitly with --model sulphur_2_dev_fp8mixed. Loaded without additional fp8-cast until visually validated."
 
 [models.sulphur_2_distil_bf16]
 display_name = "Sulphur 2 distil BF16"

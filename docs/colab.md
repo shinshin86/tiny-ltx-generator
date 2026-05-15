@@ -37,7 +37,7 @@ LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8 bash scripts/bootstrap_colab.sh --down
 
 This keeps Drive optional. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
 
-To try the Sulphur 2 LTX 2.3-derived model explicitly:
+To try the experimental Sulphur 2 LTX 2.3-derived model explicitly:
 
 ```bash
 LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --download-models
@@ -46,10 +46,13 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
   --model sulphur_2_dev_fp8mixed \
   --mode text-to-video \
   --prompt "a small cat walking across a sunlit wooden floor, realistic video" \
-  --width 512 --height 512 --frames 33 --fps 8 \
+  --width 768 --height 512 --frames 49 --fps 24 \
+  --steps 40 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
+
+Sulphur variants are not selected by `--model auto`. Validate the first output visually before using them in batch jobs. The upstream model card references a distill LoRA workflow, but this CLI does not apply LoRA adapters yet.
 
 ## CLI From Notebook Cells
 
@@ -59,14 +62,16 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
 
 ```bash
 ./target/release/ltx-runner generate \
-  --profile auto \
+  --profile colab_balanced \
   --model auto \
   --mode text-to-video \
   --prompt "a cinematic shot of a small white dog walking through Tokyo at night" \
-  --width 512 --height 512 --frames 33 --fps 8 \
+  --width 768 --height 512 --frames 49 --fps 24 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
+
+Use a landscape LTX-shaped smoke test such as `768x512` for quality checks. `512x512` is only kept for low-VRAM fallback and CUDA OOM retry paths.
 
 External notebook control tools can run these commands like any other shell cell. This project does not implement any external control protocol.
 

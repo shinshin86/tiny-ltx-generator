@@ -41,6 +41,18 @@ fn validation_accepts_safe_request() {
 }
 
 #[test]
+fn validation_accepts_ltx_landscape_smoke_request() {
+    let mut req = base_request();
+    req.profile = ProfileId::ColabBalanced;
+    req.width = 768;
+    req.height = 512;
+    req.frames = 49;
+    req.fps = 24;
+
+    validate_resolved(&req).unwrap();
+}
+
+#[test]
 fn validation_rejects_bad_resolution() {
     let mut req = base_request();
     req.width = 513;
@@ -105,7 +117,7 @@ fn cuda_oom_retry_downgrade_records_profile_model_and_caps() {
 
 #[test]
 fn batch_job_schema_accepts_prompt_example_values() {
-    let raw = r#"{"id":"dog-tokyo-001","mode":"text-to-video","prompt":"hello","negative_prompt":"blur","seed":12345,"width":512,"height":512,"frames":33,"fps":8,"profile":"auto","model":"ltxv_13b_distilled_fp8"}"#;
+    let raw = r#"{"id":"dog-tokyo-001","mode":"text-to-video","prompt":"hello","negative_prompt":"blur","seed":12345,"width":768,"height":512,"frames":49,"fps":24,"profile":"colab_balanced","model":"ltxv_13b_distilled_fp8"}"#;
     let job: BatchJob = serde_json::from_str(raw).unwrap();
     assert_eq!(job.mode, Some(GenerationMode::TextToVideo));
     assert_eq!(job.model, Some(ModelId::Ltxv13bDistilledFp8));

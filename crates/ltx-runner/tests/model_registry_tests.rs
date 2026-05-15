@@ -12,7 +12,7 @@ fn model_registry_parses_example() {
 fn model_registry_quantization_flags_are_consistent() {
     let raw = fs::read_to_string("../../configs/model_registry.example.toml").unwrap();
     let registry: ltx_runner_test_types::ModelRegistry = toml::from_str(&raw).unwrap();
-    for (id, model) in registry.models {
+    for (id, model) in &registry.models {
         match model.quantization.as_deref().unwrap_or("none") {
             "none" => {}
             "fp8-cast" => assert!(
@@ -26,6 +26,10 @@ fn model_registry_quantization_flags_are_consistent() {
             other => panic!("{id} has unknown quantization mode {other}"),
         }
     }
+
+    let sulphur = registry.models.get("sulphur_2_dev_fp8mixed").unwrap();
+    assert_eq!(sulphur.quantization.as_deref(), Some("none"));
+    assert!(!sulphur.supports_fp8_cast);
 }
 
 #[test]

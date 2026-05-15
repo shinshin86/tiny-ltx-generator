@@ -40,7 +40,7 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
 
 Set `HF_TOKEN` when Hugging Face access requires authentication.
 
-Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are not preferred over official Lightricks models by `--model auto`.
+Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are experimental in this project, are not selected by `--model auto`, and should be visually validated before batch use. The Sulphur FP8-mixed checkpoint is loaded without an additional `fp8-cast` pass until that path is verified. Sulphur's model card also references a distill LoRA workflow; this CLI does not apply LoRA adapters yet, so only the configured checkpoint path is loaded.
 
 ## Configure Model Paths
 
@@ -65,14 +65,14 @@ This reports OS, disk, Drive mount state, Python, `uv`, Rust, `ffmpeg`, `nvidia-
 
 ```bash
 ./target/release/ltx-runner generate \
-  --profile auto \
-  --model auto \
+  --profile colab_balanced \
+  --model ltx2_3_distilled_fp8 \
   --mode text-to-video \
   --prompt "a cinematic shot of a small white dog walking through Tokyo at night, realistic, soft lighting" \
-  --width 512 \
+  --width 768 \
   --height 512 \
-  --frames 33 \
-  --fps 8 \
+  --frames 49 \
+  --fps 24 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
