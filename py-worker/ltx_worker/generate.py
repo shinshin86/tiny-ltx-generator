@@ -66,7 +66,7 @@ class Generator:
             else:
                 raise RuntimeError("selected pipeline does not expose image conditioning parameters")
         import torch
-        with torch.inference_mode():
+        with _torch_generation_context(torch):
             result = self.models.pipeline(**kwargs)
         output = persist_result(
             result,
@@ -128,3 +128,11 @@ def _accepts_parameter(signature, name):
         parameter.kind == inspect.Parameter.VAR_KEYWORD
         for parameter in signature.parameters.values()
     )
+
+
+def _torch_generation_context(torch_module):
+    # ltx-pipelines encoders may run autograd-aware ops while consuming returned video tensors.
+    # no_grad keeps generation non-training while avoiding inference tensor incompatibilities.
+    if hasattr(torch_module, "no_grad"):
+        return torch_module.no_grad()
+    return torch_module.inference_mode()

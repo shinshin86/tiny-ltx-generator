@@ -260,6 +260,54 @@ def test_generator_skips_unsupported_optional_pipeline_kwargs(monkeypatch):
     }]
 
 
+def test_generator_prefers_no_grad_context_when_available(monkeypatch):
+    class Context:
+        def __init__(self, name):
+            self.name = name
+
+        def __enter__(self):
+            calls.append(f"enter:{self.name}")
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            calls.append(f"exit:{self.name}")
+            return False
+
+    calls = []
+
+    class FakePipeline:
+        def __call__(self, prompt, width, height, num_frames, seed):
+            calls.append("pipeline")
+            return object()
+
+    fake_torch = types.SimpleNamespace(
+        inference_mode=lambda: Context("inference_mode"),
+        no_grad=lambda: Context("no_grad"),
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("ltx_worker.generate.persist_result", lambda _result, path, **_kwargs: path)
+
+    generator = Generator(lambda *_args: None)
+    generator.models.pipeline = FakePipeline()
+    generator.models.load = lambda *_args: None
+
+    generator.generate("req", {
+        "request": {
+            "mode": "text-to-video",
+            "prompt": "hello",
+            "width": 512,
+            "height": 512,
+            "frames": 33,
+            "fps": 8,
+            "seed": 123,
+            "output_path": "/tmp/out.mp4",
+        },
+        "model": {"id": "model-a"},
+    })
+
+    assert calls == ["enter:no_grad", "pipeline", "exit:no_grad"]
+
+
 def test_generator_uses_ltx_image_conditioning_input_for_images_parameter(monkeypatch):
     class FakeImageConditioningInput(tuple):
         def __new__(cls, path, frame_idx, strength, crf=23):
