@@ -42,12 +42,18 @@ class Generator:
             kwargs["fps"] = float(request["fps"])
         if "frame_rate" in call_signature.parameters:
             kwargs["frame_rate"] = float(request["fps"])
-        if request.get("negative_prompt") and _accepts_parameter(call_signature, "negative_prompt"):
-            kwargs["negative_prompt"] = request["negative_prompt"]
+        if _accepts_parameter(call_signature, "negative_prompt"):
+            negative_prompt = request.get("negative_prompt")
+            if negative_prompt is not None or _is_required_parameter(call_signature, "negative_prompt"):
+                kwargs["negative_prompt"] = negative_prompt or ""
         if request.get("guidance_scale") is not None and _accepts_parameter(call_signature, "guidance_scale"):
             kwargs["guidance_scale"] = request["guidance_scale"]
         if request.get("steps") is not None and _accepts_parameter(call_signature, "num_inference_steps"):
             kwargs["num_inference_steps"] = request["steps"]
+        if "video_guider_params" in call_signature.parameters:
+            kwargs["video_guider_params"] = _multimodal_guider_params(request, modality_scale=3.0)
+        if "audio_guider_params" in call_signature.parameters:
+            kwargs["audio_guider_params"] = _multimodal_guider_params(request, modality_scale=0.0, cfg_scale=1.0)
         if "images" in call_signature.parameters:
             kwargs["images"] = []
         if "tiling_config" in call_signature.parameters:
@@ -74,6 +80,7 @@ class Generator:
             fps=request["fps"],
             num_frames=request["frames"],
             tiling_config=kwargs.get("tiling_config"),
+            include_audio=False,
         )
         self.emit(request_id, "progress", {"stage": "after_generation", "memory": memory_stats(), "output": output})
         return {"output_path": output, "memory": memory_stats()}
@@ -127,6 +134,24 @@ def _accepts_parameter(signature, name):
     return any(
         parameter.kind == inspect.Parameter.VAR_KEYWORD
         for parameter in signature.parameters.values()
+    )
+
+
+def _is_required_parameter(signature, name):
+    parameter = signature.parameters.get(name)
+    return parameter is not None and parameter.default is inspect.Parameter.empty
+
+
+def _multimodal_guider_params(request, modality_scale, cfg_scale=None):
+    from ltx_core.components.guiders import MultiModalGuiderParams
+
+    return MultiModalGuiderParams(
+        cfg_scale=cfg_scale if cfg_scale is not None else float(request.get("guidance_scale") or 3.0),
+        stg_scale=1.0,
+        rescale_scale=0.7,
+        modality_scale=modality_scale,
+        skip_step=0,
+        stg_blocks=[29],
     )
 
 

@@ -205,6 +205,12 @@ pub enum ModelArg {
     Ltx2_3DistilledFp8,
     #[value(name = "ltx2_3_distilled")]
     Ltx2_3Distilled,
+    #[value(name = "sulphur_2_dev_bf16")]
+    Sulphur2DevBf16,
+    #[value(name = "sulphur_2_dev_fp8mixed")]
+    Sulphur2DevFp8Mixed,
+    #[value(name = "sulphur_2_distil_bf16")]
+    Sulphur2DistilBf16,
     #[value(name = "ltxv_13b_distilled_fp8")]
     Ltxv13bDistilledFp8,
 }
@@ -239,6 +245,9 @@ impl From<ModelArg> for ModelId {
             ModelArg::Ltx2_3Fp8 => Self::Ltx2_3Fp8,
             ModelArg::Ltx2_3DistilledFp8 => Self::Ltx2_3DistilledFp8,
             ModelArg::Ltx2_3Distilled => Self::Ltx2_3Distilled,
+            ModelArg::Sulphur2DevBf16 => Self::Sulphur2DevBf16,
+            ModelArg::Sulphur2DevFp8Mixed => Self::Sulphur2DevFp8Mixed,
+            ModelArg::Sulphur2DistilBf16 => Self::Sulphur2DistilBf16,
             ModelArg::Ltxv13bDistilledFp8 => Self::Ltxv13bDistilledFp8,
         }
     }

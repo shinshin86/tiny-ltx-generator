@@ -30,6 +30,8 @@ class ModelManager:
                     "DistilledPipeline requires a distilled model; provide a config_path for non-distilled variants",
                 )
             self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs, offload_mode)
+        elif pipeline_cls.__name__ == "TI2VidOneStagePipeline":
+            self.pipeline = self._load_one_stage_pipeline(pipeline_cls, model_entry, kwargs)
         elif hasattr(pipeline_cls, "from_config"):
             raise WorkerError("unsupported_pipeline", "this pipeline requires config_path in the model registry")
         else:
@@ -107,6 +109,29 @@ class ModelManager:
         filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
         return pipeline_cls(**filtered)
 
+    def _load_one_stage_pipeline(self, pipeline_cls, model_entry, kwargs):
+        checkpoint_path = model_entry.get("checkpoint_path")
+        gemma_root = model_entry.get("gemma_root")
+        missing = [
+            name
+            for name, value in [
+                ("checkpoint_path", checkpoint_path),
+                ("gemma_root", gemma_root),
+            ]
+            if not value
+        ]
+        if missing:
+            raise WorkerError("missing_model_files", f"TI2VidOneStagePipeline requires: {', '.join(missing)}")
+        signature = inspect.signature(pipeline_cls)
+        init_kwargs = {
+            "checkpoint_path": checkpoint_path,
+            "gemma_root": gemma_root,
+            "loras": (),
+        }
+        init_kwargs.update(kwargs)
+        filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
+        return pipeline_cls(**filtered)
+
     def _offload_mode(self, profile):
         requested = os.environ.get("LTX_OFFLOAD_MODE")
         if not requested and profile in {"colab_tiny", "colab_eco"}:
@@ -137,4 +162,4 @@ def _is_distilled_model(model_key, model_entry):
         model_entry.get("display_name") or "",
         model_entry.get("checkpoint_path") or "",
     ]
-    return any("distilled" in value.lower() for value in values)
+    return any("distilled" in value.lower() or "distil" in value.lower() for value in values)

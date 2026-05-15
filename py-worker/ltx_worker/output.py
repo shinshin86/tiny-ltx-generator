@@ -4,7 +4,7 @@ from pathlib import Path
 from .errors import WorkerError
 
 
-def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=None):
+def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=None, include_audio=False):
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(result, (str, Path)) and Path(result).exists():
@@ -14,7 +14,7 @@ def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=N
         result.save(str(output))
         return str(output)
     if isinstance(result, tuple) and len(result) == 2:
-        _encode_ltx_tuple(result, output, fps, num_frames, tiling_config)
+        _encode_ltx_tuple(result, output, fps, num_frames, tiling_config, include_audio)
         return str(output)
     for attr in ("video_path", "output_path", "path"):
         value = getattr(result, attr, None)
@@ -33,8 +33,10 @@ def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=N
     raise WorkerError("unsupported_pipeline", "pipeline returned an unsupported result type; cannot persist video")
 
 
-def _encode_ltx_tuple(result, output, fps, num_frames, tiling_config):
+def _encode_ltx_tuple(result, output, fps, num_frames, tiling_config, include_audio):
     video, audio = result
+    if not include_audio:
+        audio = None
     try:
         from ltx_pipelines.utils.media_io import encode_video
 

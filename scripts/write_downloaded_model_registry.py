@@ -18,12 +18,17 @@ def main():
         "ltx2_3_fp8": model_dir / "ltx-2.3-22b-dev-fp8.safetensors",
         "ltx2_3_distilled_fp8": model_dir / "ltx-2.3-22b-distilled-fp8.safetensors",
         "ltx2_3_distilled": model_dir / "ltx-2.3-22b-distilled.safetensors",
+        "sulphur_2_dev_bf16": model_dir / "sulphur_dev_bf16.safetensors",
+        "sulphur_2_dev_fp8mixed": model_dir / "sulphur_dev_fp8mixed.safetensors",
+        "sulphur_2_distil_bf16": model_dir / "sulphur_distil_bf16.safetensors",
     }
     enabled = args.variant
     if enabled not in paths:
         raise SystemExit(f"unsupported variant: {enabled}")
 
-    def entry(key, display, checkpoint, supports_audio, fp8, preferred, notes):
+    def entry(key, display, checkpoint, supports_audio, fp8, preferred, notes, spatial_path=None):
+        if spatial_path is None:
+            spatial_path = spatial
         return f'''
 [models.{key}]
 display_name = "{display}"
@@ -32,7 +37,7 @@ config_path = ""
 gemma_root = "{gemma}"
 text_encoder_path = ""
 vae_path = ""
-spatial_upsampler_path = "{spatial}"
+spatial_upsampler_path = "{spatial_path}"
 temporal_upsampler_path = ""
 supports_audio = {str(supports_audio).lower()}
 supports_t2v = true
@@ -80,6 +85,35 @@ notes = "{notes}"
         False,
         '["colab_tiny", "colab_eco", "colab_balanced"]',
         "BF16 distilled variant. Use when FP8 is unavailable or not desired.",
+    )
+    registry += entry(
+        "sulphur_2_dev_bf16",
+        "Sulphur 2 dev BF16",
+        paths["sulphur_2_dev_bf16"] if enabled == "sulphur_2_dev_bf16" else "",
+        True,
+        False,
+        '["colab_quality"]',
+        "Community LTX 2.3-derived full model. Use explicitly with --model sulphur_2_dev_bf16.",
+        spatial_path="",
+    )
+    registry += entry(
+        "sulphur_2_dev_fp8mixed",
+        "Sulphur 2 dev FP8 mixed",
+        paths["sulphur_2_dev_fp8mixed"] if enabled == "sulphur_2_dev_fp8mixed" else "",
+        True,
+        True,
+        '["colab_balanced", "colab_quality"]',
+        "Community LTX 2.3-derived FP8 mixed full model. Use explicitly with --model sulphur_2_dev_fp8mixed.",
+        spatial_path="",
+    )
+    registry += entry(
+        "sulphur_2_distil_bf16",
+        "Sulphur 2 distil BF16",
+        paths["sulphur_2_distil_bf16"] if enabled == "sulphur_2_distil_bf16" else "",
+        False,
+        False,
+        '["colab_tiny", "colab_eco", "colab_balanced"]',
+        "Community LTX 2.3-derived distilled model. Use explicitly with --model sulphur_2_distil_bf16.",
     )
     registry += '''
 [models.ltxv_13b_distilled_fp8]

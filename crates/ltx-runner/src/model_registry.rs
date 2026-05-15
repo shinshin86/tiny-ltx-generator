@@ -41,6 +41,9 @@ pub fn model_key(model: ModelId) -> &'static str {
         ModelId::Ltx2_3Fp8 => "ltx2_3_fp8",
         ModelId::Ltx2_3DistilledFp8 => "ltx2_3_distilled_fp8",
         ModelId::Ltx2_3Distilled => "ltx2_3_distilled",
+        ModelId::Sulphur2DevBf16 => "sulphur_2_dev_bf16",
+        ModelId::Sulphur2DevFp8Mixed => "sulphur_2_dev_fp8mixed",
+        ModelId::Sulphur2DistilBf16 => "sulphur_2_distil_bf16",
         ModelId::Ltxv13bDistilledFp8 => "ltxv_13b_distilled_fp8",
     }
 }
@@ -50,6 +53,8 @@ pub fn preferred_models(profile: ProfileId) -> Vec<ModelId> {
         ProfileId::ColabTiny | ProfileId::ColabEco | ProfileId::NoGpu | ProfileId::Auto => vec![
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
+            ModelId::Sulphur2DistilBf16,
+            ModelId::Sulphur2DevFp8Mixed,
             ModelId::Ltx2_3Fp8,
             ModelId::Ltxv13bDistilledFp8,
         ],
@@ -57,13 +62,18 @@ pub fn preferred_models(profile: ProfileId) -> Vec<ModelId> {
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
+            ModelId::Sulphur2DevFp8Mixed,
+            ModelId::Sulphur2DistilBf16,
             ModelId::Ltx2_3Full,
         ],
         ProfileId::ColabQuality => vec![
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3Full,
+            ModelId::Sulphur2DevFp8Mixed,
+            ModelId::Sulphur2DevBf16,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
+            ModelId::Sulphur2DistilBf16,
         ],
     }
 }
@@ -159,6 +169,17 @@ mod tests {
     fn auto_model_order_prefers_distilled_for_tiny() {
         let models = preferred_models(ProfileId::ColabTiny);
         assert_eq!(models[0], ModelId::Ltx2_3DistilledFp8);
+    }
+
+    #[test]
+    fn sulphur_models_are_addressable_but_not_first_auto_choice() {
+        assert_eq!(
+            model_key(ModelId::Sulphur2DevFp8Mixed),
+            "sulphur_2_dev_fp8mixed"
+        );
+        let quality = preferred_models(ProfileId::ColabQuality);
+        assert_eq!(quality[0], ModelId::Ltx2_3Fp8);
+        assert!(quality.contains(&ModelId::Sulphur2DevFp8Mixed));
     }
 
     #[test]

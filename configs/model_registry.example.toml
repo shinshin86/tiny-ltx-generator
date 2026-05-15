@@ -70,6 +70,60 @@ quantization = "none"
 preferred_profiles = ["colab_tiny", "colab_eco", "colab_balanced"]
 notes = "Distilled model for fewer steps."
 
+[models.sulphur_2_dev_bf16]
+display_name = "Sulphur 2 dev BF16"
+checkpoint_path = "/content/models/sulphur_dev_bf16.safetensors"
+config_path = ""
+gemma_root = "/content/models/gemma-3-12b-it-qat-q4_0-unquantized"
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = true
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = false
+supports_fp8_scaled_mm = false
+quantization = "none"
+preferred_profiles = ["colab_quality"]
+notes = "Community LTX 2.3-derived full model from SulphurAI/Sulphur-2-base. Use explicitly with --model sulphur_2_dev_bf16."
+
+[models.sulphur_2_dev_fp8mixed]
+display_name = "Sulphur 2 dev FP8 mixed"
+checkpoint_path = "/content/models/sulphur_dev_fp8mixed.safetensors"
+config_path = ""
+gemma_root = "/content/models/gemma-3-12b-it-qat-q4_0-unquantized"
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = true
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = true
+supports_fp8_scaled_mm = false
+quantization = "fp8-cast"
+preferred_profiles = ["colab_balanced", "colab_quality"]
+notes = "Community LTX 2.3-derived FP8 mixed full model from SulphurAI/Sulphur-2-base. Use explicitly with --model sulphur_2_dev_fp8mixed."
+
+[models.sulphur_2_distil_bf16]
+display_name = "Sulphur 2 distil BF16"
+checkpoint_path = "/content/models/sulphur_distil_bf16.safetensors"
+config_path = ""
+gemma_root = "/content/models/gemma-3-12b-it-qat-q4_0-unquantized"
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = "/content/models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+temporal_upsampler_path = ""
+supports_audio = false
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = false
+supports_fp8_scaled_mm = false
+quantization = "none"
+preferred_profiles = ["colab_tiny", "colab_eco", "colab_balanced"]
+notes = "Community LTX 2.3-derived distilled model from SulphurAI/Sulphur-2-base. Use explicitly with --model sulphur_2_distil_bf16."
+
 [models.ltxv_13b_distilled_fp8]
 display_name = "LTXV 13B distilled FP8 fallback"
 checkpoint_path = "/content/models/ltxv-13b-distilled-fp8.safetensors"

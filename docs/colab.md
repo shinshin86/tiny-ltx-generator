@@ -37,6 +37,20 @@ LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8 bash scripts/bootstrap_colab.sh --down
 
 This keeps Drive optional. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
 
+To try the Sulphur 2 LTX 2.3-derived model explicitly:
+
+```bash
+LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --download-models
+./target/release/ltx-runner generate \
+  --profile colab_quality \
+  --model sulphur_2_dev_fp8mixed \
+  --mode text-to-video \
+  --prompt "a small cat walking across a sunlit wooden floor, realistic video" \
+  --width 512 --height 512 --frames 33 --fps 8 \
+  --out-dir /content/outputs \
+  --jsonl-events
+```
+
 ## CLI From Notebook Cells
 
 ```bash

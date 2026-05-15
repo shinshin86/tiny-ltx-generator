@@ -35,9 +35,12 @@ Other supported setup variants:
 LTX_DOWNLOAD_VARIANT=ltx2_3_distilled bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_fp8 bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_full bash scripts/bootstrap_colab.sh --download-models
+LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --download-models
 ```
 
 Set `HF_TOKEN` when Hugging Face access requires authentication.
+
+Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are not preferred over official Lightricks models by `--model auto`.
 
 ## Configure Model Paths
 

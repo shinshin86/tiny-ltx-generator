@@ -56,6 +56,19 @@ case "$VARIANT" in
     hf_download Lightricks/LTX-2.3 "ltx-2.3-spatial-upscaler-x2-1.1.safetensors" "$MODEL_DIR"
     download_gemma
     ;;
+  sulphur_2_dev_bf16)
+    hf_download SulphurAI/Sulphur-2-base "sulphur_dev_bf16.safetensors" "$MODEL_DIR"
+    download_gemma
+    ;;
+  sulphur_2_dev_fp8mixed)
+    hf_download SulphurAI/Sulphur-2-base "sulphur_dev_fp8mixed.safetensors" "$MODEL_DIR"
+    download_gemma
+    ;;
+  sulphur_2_distil_bf16)
+    hf_download SulphurAI/Sulphur-2-base "sulphur_distil_bf16.safetensors" "$MODEL_DIR"
+    hf_download Lightricks/LTX-2.3 "ltx-2.3-spatial-upscaler-x2-1.1.safetensors" "$MODEL_DIR"
+    download_gemma
+    ;;
   *)
     echo "unknown LTX_DOWNLOAD_VARIANT: $VARIANT" >&2
     exit 2

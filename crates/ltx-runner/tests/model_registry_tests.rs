@@ -5,6 +5,7 @@ fn model_registry_parses_example() {
     let raw = fs::read_to_string("../../configs/model_registry.example.toml").unwrap();
     let registry: ltx_runner_test_types::ModelRegistry = toml::from_str(&raw).unwrap();
     assert!(registry.models.contains_key("ltx2_3_distilled_fp8"));
+    assert!(registry.models.contains_key("sulphur_2_dev_fp8mixed"));
 }
 
 #[test]
@@ -36,8 +37,12 @@ fn colab_download_scripts_track_default_low_vram_variant() {
 
     assert!(download_script.contains("VARIANT=\"${LTX_DOWNLOAD_VARIANT:-ltx2_3_distilled_fp8}\""));
     assert!(download_script.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(download_script.contains("sulphur_2_dev_fp8mixed"));
     assert!(registry_writer.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(registry_writer.contains("sulphur_dev_fp8mixed.safetensors"));
+    assert!(registry_writer.contains("spatial_path=\"\""));
     assert!(example_registry.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(example_registry.contains("sulphur_dev_fp8mixed.safetensors"));
 
     assert!(!download_script.contains("ltx-2.3-22b-distilled-1.1.safetensors"));
     assert!(!registry_writer.contains("ltx-2.3-22b-distilled-1.1.safetensors"));

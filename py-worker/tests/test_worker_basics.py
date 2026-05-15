@@ -148,6 +148,37 @@ def test_model_manager_rejects_full_model_on_distilled_loading_path():
         raise AssertionError("full model should not be loaded through DistilledPipeline")
 
 
+def test_model_manager_loads_one_stage_pipeline():
+    calls = []
+
+    class TI2VidOneStagePipeline:
+        def __init__(self, checkpoint_path, gemma_root, loras, quantization=None):
+            calls.append({
+                "checkpoint_path": checkpoint_path,
+                "gemma_root": gemma_root,
+                "loras": loras,
+                "quantization": quantization,
+            })
+
+    manager = ModelManager(lambda *_args: None)
+    pipeline = manager._load_one_stage_pipeline(
+        TI2VidOneStagePipeline,
+        {
+            "checkpoint_path": "/content/models/sulphur_dev_fp8mixed.safetensors",
+            "gemma_root": "/content/models/gemma",
+        },
+        {"quantization": "q"},
+    )
+
+    assert isinstance(pipeline, TI2VidOneStagePipeline)
+    assert calls == [{
+        "checkpoint_path": "/content/models/sulphur_dev_fp8mixed.safetensors",
+        "gemma_root": "/content/models/gemma",
+        "loras": (),
+        "quantization": "q",
+    }]
+
+
 def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     class InferenceMode:
         def __enter__(self):
@@ -260,6 +291,79 @@ def test_generator_skips_unsupported_optional_pipeline_kwargs(monkeypatch):
     }]
 
 
+def test_generator_supplies_required_full_pipeline_kwargs(monkeypatch):
+    class InferenceMode:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeGuiderParams:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    fake_guiders = types.SimpleNamespace(MultiModalGuiderParams=FakeGuiderParams)
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(sys.modules, "ltx_core.components", types.ModuleType("ltx_core.components"))
+    monkeypatch.setitem(sys.modules, "ltx_core.components.guiders", fake_guiders)
+
+    calls = []
+
+    class FullPipeline:
+        def __call__(
+            self,
+            prompt,
+            negative_prompt,
+            width,
+            height,
+            num_frames,
+            frame_rate,
+            seed,
+            num_inference_steps,
+            video_guider_params,
+            audio_guider_params,
+            images,
+        ):
+            calls.append({
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "num_inference_steps": num_inference_steps,
+                "video": video_guider_params.kwargs,
+                "audio": audio_guider_params.kwargs,
+                "images": images,
+            })
+            return object()
+
+    fake_torch = types.SimpleNamespace(no_grad=lambda: InferenceMode())
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("ltx_worker.generate.persist_result", lambda _result, path, **_kwargs: path)
+
+    generator = Generator(lambda *_args: None)
+    generator.models.pipeline = FullPipeline()
+    generator.models.load = lambda *_args: None
+
+    generator.generate("req", {
+        "request": {
+            "mode": "text-to-video",
+            "prompt": "cat",
+            "width": 512,
+            "height": 512,
+            "frames": 33,
+            "fps": 8,
+            "seed": 123,
+            "steps": 12,
+            "output_path": "/tmp/out.mp4",
+        },
+        "model": {"id": "sulphur_2_dev_fp8mixed"},
+    })
+
+    assert calls[0]["negative_prompt"] == ""
+    assert calls[0]["num_inference_steps"] == 12
+    assert calls[0]["video"]["modality_scale"] == 3.0
+    assert calls[0]["audio"]["modality_scale"] == 0.0
+
+
 def test_generator_prefers_no_grad_context_when_available(monkeypatch):
     class Context:
         def __init__(self, name):
@@ -365,9 +469,32 @@ def test_persist_result_encodes_ltx_tuple_with_chunk_count(monkeypatch, tmp_path
     assert path == str(output)
     assert output.read_bytes() == b"mp4"
     assert calls[0]["video"] == "video"
-    assert calls[0]["audio"] == "audio"
+    assert calls[0]["audio"] is None
     assert calls[0]["fps"] == 8
     assert calls[0]["video_chunks_number"] == 7
+
+
+def test_persist_result_drops_ltx_audio_by_default(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_encode_video(**kwargs):
+        calls.append(kwargs)
+        Path = __import__("pathlib").Path
+        Path(kwargs["output_path"]).write_bytes(b"mp4")
+
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_pipelines.utils.media_io",
+        types.SimpleNamespace(encode_video=fake_encode_video),
+    )
+
+    output = tmp_path / "out.mp4"
+    persist_result(("video", "audio"), output, fps=8, num_frames=33)
+
+    assert output.read_bytes() == b"mp4"
+    assert calls[0]["audio"] is None
 
 
 def test_persist_result_encodes_ltx_tuple_with_safe_default_chunk_count(monkeypatch, tmp_path):

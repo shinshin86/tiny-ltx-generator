@@ -27,6 +27,12 @@ pub enum ModelId {
     Ltx2_3Fp8,
     Ltx2_3DistilledFp8,
     Ltx2_3Distilled,
+    #[serde(rename = "sulphur_2_dev_bf16")]
+    Sulphur2DevBf16,
+    #[serde(rename = "sulphur_2_dev_fp8mixed")]
+    Sulphur2DevFp8Mixed,
+    #[serde(rename = "sulphur_2_distil_bf16")]
+    Sulphur2DistilBf16,
     #[serde(rename = "ltxv_13b_distilled_fp8")]
     Ltxv13bDistilledFp8,
 }
