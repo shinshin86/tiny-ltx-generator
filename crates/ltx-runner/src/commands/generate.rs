@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
-use ltx_core::{validate_resolved, GenerationRequest};
+use ltx_core::{
+    apply_cuda_oom_retry_downgrade, validate_resolved, GenerationRequest, ModelId, ResolvedRequest,
+    WorkerResponse,
+};
 use serde_json::json;
 use std::{fs, path::Path};
 
@@ -11,7 +14,7 @@ use crate::{
     ffmpeg, hardware,
     job::JobMetadata,
     json_output,
-    model_registry::{missing_paths, model_key, ModelRegistry},
+    model_registry::{missing_paths, model_key, preferred_models, ModelRegistry},
     protocol, storage,
     worker_process::WorkerProcess,
 };
@@ -102,26 +105,102 @@ pub async fn run(args: GenerateArgs) -> Result<()> {
         }
         return Ok(());
     }
-    let mut worker = WorkerProcess::start(&config.python_worker).await?;
-    let _health = worker.request("health", json!({})).await?;
-    let mut model_payload = serde_json::to_value(model_entry.clone())?;
-    if let Some(obj) = model_payload.as_object_mut() {
-        obj.insert("id".to_string(), json!(model_key(selected_model)));
-    }
-    let result = match worker
-        .request_stream(
-            "generate",
-            json!({
-                "request": resolved.clone(),
-                "model": model_payload,
-            }),
-            |event| protocol::record_event(&events_path, event, args.jsonl_events),
-        )
-        .await
+    let result = match run_worker_generation(
+        &config,
+        selected_model,
+        &model_entry,
+        &resolved,
+        &events_path,
+        args.jsonl_events,
+    )
+    .await
     {
         Ok(result) => result,
         Err(err) => {
-            let _ = worker.shutdown().await;
+            if is_cuda_oom(&err) && args.allow_auto_downgrade && !args.no_auto_downgrade {
+                if let Some((retry_model, retry_entry)) = choose_cuda_oom_retry_model(&registry) {
+                    let mut retry_resolved = resolved.clone();
+                    apply_cuda_oom_retry_downgrade(&mut retry_resolved, retry_model);
+                    storage::write_json(
+                        format!("{}/resolved_request.json", retry_resolved.job_dir),
+                        &retry_resolved,
+                    )?;
+                    protocol::record_event(
+                        &events_path,
+                        &WorkerResponse {
+                            id: retry_resolved.job_id.clone(),
+                            response_type: "log".to_string(),
+                            payload: json!({
+                                "stage": "retry_after_cuda_oom",
+                                "profile": retry_resolved.profile,
+                                "model": retry_resolved.model,
+                                "downgrades": retry_resolved.downgrades.clone(),
+                            }),
+                        },
+                        args.jsonl_events,
+                    )?;
+                    match run_worker_generation(
+                        &config,
+                        retry_model,
+                        &retry_entry,
+                        &retry_resolved,
+                        &events_path,
+                        args.jsonl_events,
+                    )
+                    .await
+                    {
+                        Ok(result) => {
+                            storage::write_json(
+                                format!("{}/worker_stats.json", retry_resolved.job_dir),
+                                &result.payload,
+                            )?;
+                            let meta = metadata(
+                                "success",
+                                None,
+                                retry_resolved.clone(),
+                                Some(retry_entry),
+                                false,
+                            )
+                            .await?;
+                            storage::write_json(
+                                format!("{}/metadata.json", retry_resolved.job_dir),
+                                &meta,
+                            )?;
+                            copy_to_drive_if_requested(
+                                args.copy_to_drive,
+                                &config,
+                                &retry_resolved,
+                            )?;
+                            if args.json {
+                                json_output::print_json(
+                                    &json!({"status": "success", "retried_after_cuda_oom": true, "output": retry_resolved.output_path, "job_dir": retry_resolved.job_dir}),
+                                )?;
+                            } else {
+                                eprintln!(
+                                    "output written after CUDA OOM retry: {}",
+                                    retry_resolved.output_path
+                                );
+                            }
+                            return Ok(());
+                        }
+                        Err(retry_err) => {
+                            let meta = metadata(
+                                "error",
+                                Some(json!({"message": retry_err.to_string(), "previous_error": err.to_string()})),
+                                retry_resolved.clone(),
+                                Some(retry_entry),
+                                false,
+                            )
+                            .await?;
+                            storage::write_json(
+                                format!("{}/metadata.json", retry_resolved.job_dir),
+                                &meta,
+                            )?;
+                            return Err(retry_err);
+                        }
+                    }
+                }
+            }
             let meta = metadata(
                 "error",
                 Some(json!({"message": err.to_string()})),
@@ -134,7 +213,6 @@ pub async fn run(args: GenerateArgs) -> Result<()> {
             return Err(err);
         }
     };
-    let _ = worker.shutdown().await;
     storage::write_json(
         format!("{}/worker_stats.json", resolved.job_dir),
         &result.payload,
@@ -150,6 +228,54 @@ pub async fn run(args: GenerateArgs) -> Result<()> {
         eprintln!("output written: {}", resolved.output_path);
     }
     Ok(())
+}
+
+async fn run_worker_generation(
+    config: &EngineConfig,
+    selected_model: ModelId,
+    model_entry: &ltx_core::ModelEntry,
+    resolved: &ResolvedRequest,
+    events_path: &Path,
+    jsonl_events: bool,
+) -> Result<WorkerResponse> {
+    validate_model_support(resolved, model_entry)?;
+    let missing = missing_paths(model_entry);
+    if !missing.is_empty() {
+        return Err(AppError::MissingModel(missing.join(", ")).into());
+    }
+    let mut worker = WorkerProcess::start(&config.python_worker).await?;
+    let _health = worker.request("health", json!({})).await?;
+    let mut model_payload = serde_json::to_value(model_entry.clone())?;
+    if let Some(obj) = model_payload.as_object_mut() {
+        obj.insert("id".to_string(), json!(model_key(selected_model)));
+    }
+    let result = worker
+        .request_stream(
+            "generate",
+            json!({
+                "request": resolved,
+                "model": model_payload,
+            }),
+            |event| protocol::record_event(events_path, event, jsonl_events),
+        )
+        .await;
+    let _ = worker.shutdown().await;
+    result
+}
+
+fn choose_cuda_oom_retry_model(
+    registry: &ModelRegistry,
+) -> Option<(ModelId, ltx_core::ModelEntry)> {
+    preferred_models(ltx_core::ProfileId::ColabTiny)
+        .into_iter()
+        .filter_map(|model| registry.select(model, ltx_core::ProfileId::ColabTiny))
+        .find(|(_, entry)| missing_paths(entry).is_empty())
+}
+
+fn is_cuda_oom(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<AppError>()
+        .map(|app| matches!(app, AppError::CudaOom(_)))
+        .unwrap_or(false)
 }
 
 fn copy_to_drive_if_requested(

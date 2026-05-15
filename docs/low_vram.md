@@ -24,3 +24,5 @@ When CUDA OOM happens, reduce:
 7. model variant
 
 Use `--no-auto-downgrade` when you want hard failure instead of profile-based reduction.
+
+If the Python worker returns a structured CUDA OOM error, `generate` and `batch` retry once when auto downgrade is enabled. The retry switches to `colab_tiny`, caps the request to 512x512, 33 frames, 8 fps, and 8 steps, then selects the first configured low-VRAM model from the registry. Every changed field is recorded in the job downgrade list.

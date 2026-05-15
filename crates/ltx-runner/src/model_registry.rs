@@ -85,6 +85,8 @@ pub fn missing_paths(entry: &ModelEntry) -> Vec<String> {
             entry.gemma_root.as_deref(),
             entry.text_encoder_path.as_deref(),
             entry.vae_path.as_deref(),
+            entry.spatial_upsampler_path.as_deref(),
+            entry.temporal_upsampler_path.as_deref(),
             entry.config_path.as_deref(),
         ]
         .into_iter()

@@ -125,6 +125,8 @@ Reduce in this order:
 
 Use `colab_tiny` or `colab_eco`, distilled models, FP8 when supported, and keep audio/upscaling disabled for low-VRAM runs.
 
+When CUDA OOM is reported by the worker and auto downgrade is enabled, `generate` and `batch` retry once with a `colab_tiny`-class request and a configured low-VRAM model. The retry writes the changed profile, model, resolution, frames, fps, and steps into `resolved_request.json` and `metadata.json` downgrade records.
+
 ## Tests
 
 Run tests in Colab:

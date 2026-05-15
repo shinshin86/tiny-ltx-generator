@@ -1,6 +1,6 @@
 use ltx_core::{
-    apply_profile_caps, recommend_profile, validate_resolved, BatchJob, GenerationMode, ModelId,
-    ProfileId, ResolvedRequest, WorkerRequest, WorkerResponse,
+    apply_cuda_oom_retry_downgrade, apply_profile_caps, recommend_profile, validate_resolved,
+    BatchJob, GenerationMode, ModelId, ProfileId, ResolvedRequest, WorkerRequest, WorkerResponse,
 };
 
 fn base_request() -> ResolvedRequest {
@@ -77,6 +77,30 @@ fn downgrade_caps_record_each_changed_field() {
     assert_eq!(req.fps, 8);
     assert_eq!(req.steps, 8);
     assert_eq!(req.downgrades.len(), 5);
+}
+
+#[test]
+fn cuda_oom_retry_downgrade_records_profile_model_and_caps() {
+    let mut req = base_request();
+    req.profile = ProfileId::ColabQuality;
+    req.model = ModelId::Ltx2_3Full;
+    req.width = 1280;
+    req.height = 720;
+    req.frames = 97;
+    req.fps = 24;
+    req.steps = 30;
+    apply_cuda_oom_retry_downgrade(&mut req, ModelId::Ltx2_3Distilled);
+    assert_eq!(req.profile, ProfileId::ColabTiny);
+    assert_eq!(req.model, ModelId::Ltx2_3Distilled);
+    assert_eq!(req.width, 512);
+    assert_eq!(req.height, 512);
+    assert_eq!(req.frames, 33);
+    assert_eq!(req.fps, 8);
+    assert_eq!(req.steps, 8);
+    assert!(req
+        .downgrades
+        .iter()
+        .all(|record| record.reason == "retry after CUDA OOM"));
 }
 
 #[test]
