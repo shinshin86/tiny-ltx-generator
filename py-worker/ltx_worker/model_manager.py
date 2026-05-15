@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import os
 from .errors import WorkerError
 from .memory import cleanup_cuda, memory_stats
 from .profiles import preferred_pipeline_names
@@ -19,8 +20,9 @@ class ModelManager:
         self.emit(request_id, "progress", {"stage": "before_load", "memory": memory_stats()})
         pipeline_cls = self._find_pipeline(model_key, profile)
         kwargs = self._quantization_kwargs(model_entry)
+        offload_mode = self._offload_mode(profile)
         if pipeline_cls.__name__ == "DistilledPipeline":
-            self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs)
+            self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs, offload_mode)
         elif model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
             self.pipeline = pipeline_cls.from_config(model_entry["config_path"], **kwargs)
         elif hasattr(pipeline_cls, "from_config"):
@@ -65,7 +67,7 @@ class ModelManager:
             return {"quantization": QuantizationPolicy.fp8_scaled_mm()}
         raise WorkerError("unsupported_option", f"unsupported quantization mode: {mode}")
 
-    def _load_distilled_pipeline(self, pipeline_cls, model_entry, kwargs):
+    def _load_distilled_pipeline(self, pipeline_cls, model_entry, kwargs, offload_mode):
         checkpoint_path = model_entry.get("checkpoint_path")
         gemma_root = model_entry.get("gemma_root")
         spatial_upsampler_path = model_entry.get("spatial_upsampler_path")
@@ -87,9 +89,26 @@ class ModelManager:
             "spatial_upsampler_path": spatial_upsampler_path,
             "loras": (),
         }
+        if offload_mode is not None:
+            init_kwargs["offload_mode"] = offload_mode
         init_kwargs.update(kwargs)
         filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
         return pipeline_cls(**filtered)
+
+    def _offload_mode(self, profile):
+        requested = os.environ.get("LTX_OFFLOAD_MODE")
+        if not requested and profile in {"colab_tiny", "colab_eco"}:
+            requested = "disk"
+        if not requested or requested == "none":
+            return None
+        try:
+            from ltx_pipelines.utils.types import OffloadMode
+        except Exception as exc:
+            raise WorkerError("unsupported_option", f"offload mode requested but OffloadMode is unavailable: {exc}")
+        try:
+            return OffloadMode(requested)
+        except ValueError:
+            raise WorkerError("unsupported_option", f"unsupported offload mode: {requested}")
 
     def _to_cuda_if_possible(self):
         try:

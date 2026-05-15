@@ -66,6 +66,25 @@ def test_model_manager_reuses_loaded_pipeline_without_reimport():
     assert events == []
 
 
+def test_model_manager_defaults_low_vram_profiles_to_disk_offload(monkeypatch):
+    class FakeOffloadMode:
+        DISK = "disk"
+        CPU = "cpu"
+        NONE = "none"
+
+        def __new__(cls, value):
+            if value not in {"disk", "cpu", "none"}:
+                raise ValueError(value)
+            return value
+
+    fake_types = types.SimpleNamespace(OffloadMode=FakeOffloadMode)
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils.types", fake_types)
+    manager = ModelManager(lambda *_args: None)
+    assert manager._offload_mode("colab_tiny") == "disk"
+    assert manager._offload_mode("colab_eco") == "disk"
+    assert manager._offload_mode("colab_balanced") is None
+
+
 def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     class InferenceMode:
         def __enter__(self):
