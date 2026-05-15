@@ -34,6 +34,12 @@ struct BatchSummary {
 }
 
 pub async fn run(args: BatchArgs) -> Result<()> {
+    if args.json && args.jsonl_events {
+        return Err(AppError::Validation(
+            "--json and --jsonl-events cannot be combined".to_string(),
+        )
+        .into());
+    }
     let config = EngineConfig::load(args.config.as_deref())?;
     let registry_path = args
         .model_registry
