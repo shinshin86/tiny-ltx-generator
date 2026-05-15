@@ -73,3 +73,7 @@ External notebook control tools can run these commands like any other shell cell
 mkdir -p /content/drive/MyDrive/tiny-ltx-generator/outputs
 cp -r /content/outputs/jobs /content/drive/MyDrive/tiny-ltx-generator/outputs/
 ```
+
+## Validation
+
+For Colab smoke validation, including fake worker CUDA OOM retry verification, see `docs/colab_validation.md`.

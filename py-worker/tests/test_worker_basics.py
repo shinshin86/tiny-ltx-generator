@@ -139,3 +139,55 @@ def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     assert calls[0]["num_frames"] == 33
     assert calls[0]["frame_rate"] == 8.0
     assert calls[0]["num_inference_steps"] == 8
+
+
+def test_generator_test_cuda_oom_hook_fails_once(monkeypatch, tmp_path):
+    generator = Generator(lambda *_args: None)
+    marker = tmp_path / "oom.marker"
+    monkeypatch.setenv("LTX_WORKER_TEST_FAIL_FIRST_GENERATE", "cuda_oom")
+    monkeypatch.setenv("LTX_WORKER_TEST_FAIL_MARKER", str(marker))
+
+    try:
+        generator._maybe_raise_test_cuda_oom_once()
+    except RuntimeError as exc:
+        assert "out of memory" in str(exc).lower()
+    else:
+        raise AssertionError("first call should simulate CUDA OOM")
+
+    generator._maybe_raise_test_cuda_oom_once()
+    assert marker.exists()
+
+
+def test_generator_fake_pipeline_writes_requested_output(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(args, check, stdout, stderr):
+        calls.append(args)
+        Path = __import__("pathlib").Path
+        Path(args[-1]).write_bytes(b"fake mp4")
+
+    monkeypatch.setenv("LTX_WORKER_TEST_FAKE_PIPELINE", "1")
+    monkeypatch.setattr("ltx_worker.generate.subprocess.run", fake_run)
+
+    generator = Generator(lambda *_args: None)
+    output = tmp_path / "out.mp4"
+    result = generator.generate("req", {
+        "request": {
+            "mode": "text-to-video",
+            "prompt": "hello",
+            "width": 512,
+            "height": 512,
+            "frames": 33,
+            "fps": 8,
+            "seed": 123,
+            "steps": 8,
+            "guidance_scale": 1.0,
+            "output_path": str(output),
+        },
+        "model": {"id": "model-a"},
+    })
+
+    assert result["test_fake_pipeline"] is True
+    assert result["output_path"] == str(output)
+    assert output.read_bytes() == b"fake mp4"
+    assert calls

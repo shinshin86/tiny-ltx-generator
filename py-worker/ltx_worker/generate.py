@@ -3,6 +3,9 @@ from .model_manager import ModelManager
 from .output import persist_result
 from .validators import validate_request
 import inspect
+import os
+import subprocess
+from pathlib import Path
 
 
 class Generator:
@@ -20,6 +23,11 @@ class Generator:
         request = payload.get("request") or {}
         model = payload.get("model") or {}
         validate_request(request)
+        self._maybe_raise_test_cuda_oom_once()
+        if os.environ.get("LTX_WORKER_TEST_FAKE_PIPELINE") == "1":
+            self.emit(request_id, "progress", {"stage": "test_fake_generation", "memory": memory_stats()})
+            output = self._write_test_video(request)
+            return {"output_path": output, "memory": memory_stats(), "test_fake_pipeline": True}
         self.models.load(request_id, model, request.get("profile"))
         self.emit(request_id, "progress", {"stage": "before_generation", "memory": memory_stats()})
         kwargs = {
@@ -69,3 +77,36 @@ class Generator:
         )
         self.emit(request_id, "progress", {"stage": "after_generation", "memory": memory_stats(), "output": output})
         return {"output_path": output, "memory": memory_stats()}
+
+    def _maybe_raise_test_cuda_oom_once(self):
+        if os.environ.get("LTX_WORKER_TEST_FAIL_FIRST_GENERATE") != "cuda_oom":
+            return
+        marker = Path(os.environ.get("LTX_WORKER_TEST_FAIL_MARKER", "/content/ltx_tmp/test_cuda_oom_once.marker"))
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        if marker.exists():
+            return
+        marker.write_text("failed-once", encoding="utf-8")
+        raise RuntimeError("CUDA out of memory: simulated by LTX_WORKER_TEST_FAIL_FIRST_GENERATE")
+
+    def _write_test_video(self, request):
+        output = Path(request["output_path"])
+        output.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c=black:s={request['width']}x{request['height']}:r={request['fps']}:d=1",
+                "-vf",
+                "drawtext=text='tiny-ltx fake worker':fontcolor=white:fontsize=24:x=20:y=20",
+                "-pix_fmt",
+                "yuv420p",
+                str(output),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return str(output)
