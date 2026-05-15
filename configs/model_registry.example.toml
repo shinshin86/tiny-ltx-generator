@@ -36,7 +36,7 @@ notes = "FP8 variant. TensorRT scaled-mm is optional and must be supported by th
 
 [models.ltx2_3_distilled_fp8]
 display_name = "LTX 2.3 distilled FP8"
-checkpoint_path = "/content/models/ltx-2.3-22b-distilled-1.1-fp8.safetensors"
+checkpoint_path = "/content/models/ltx-2.3-22b-distilled-fp8.safetensors"
 config_path = "/content/models/ltx-2.3-distilled-fp8-config.yaml"
 gemma_root = ""
 text_encoder_path = ""

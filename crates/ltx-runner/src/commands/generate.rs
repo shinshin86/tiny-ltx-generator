@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use ltx_core::{
     apply_cuda_oom_retry_downgrade, validate_resolved, GenerationRequest, ModelId, ResolvedRequest,
