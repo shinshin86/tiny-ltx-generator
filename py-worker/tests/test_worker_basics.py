@@ -1,6 +1,8 @@
 from ltx_worker.memory import torch_health, memory_stats
 from ltx_worker.generate import Generator
+from ltx_worker.generate import _image_conditioning_input
 from ltx_worker.model_manager import ModelManager
+from ltx_worker.output import persist_result
 from ltx_worker.validators import validate_request
 from ltx_worker.errors import WorkerError
 import sys
@@ -167,6 +169,91 @@ def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     assert calls[0]["num_frames"] == 33
     assert calls[0]["frame_rate"] == 8.0
     assert calls[0]["num_inference_steps"] == 8
+
+
+def test_generator_uses_ltx_image_conditioning_input_for_images_parameter(monkeypatch):
+    class FakeImageConditioningInput(tuple):
+        def __new__(cls, path, frame_idx, strength, crf=23):
+            value = tuple.__new__(cls, (path, frame_idx, strength, crf))
+            value.path = path
+            value.frame_idx = frame_idx
+            value.strength = strength
+            value.crf = crf
+            return value
+
+    fake_args = types.SimpleNamespace(ImageConditioningInput=FakeImageConditioningInput)
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils.args", fake_args)
+
+    conditioning = _image_conditioning_input("/tmp/input.png")
+
+    assert isinstance(conditioning, FakeImageConditioningInput)
+    assert conditioning.path == "/tmp/input.png"
+    assert conditioning.frame_idx == 0
+    assert conditioning.strength == 1.0
+
+
+def test_persist_result_encodes_ltx_tuple_with_chunk_count(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_encode_video(**kwargs):
+        calls.append(kwargs)
+        Path = __import__("pathlib").Path
+        Path(kwargs["output_path"]).write_bytes(b"mp4")
+
+    def fake_get_video_chunks_number(num_frames, tiling_config):
+        assert num_frames == 33
+        assert tiling_config == "tiling"
+        return 7
+
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_pipelines.utils.media_io",
+        types.SimpleNamespace(encode_video=fake_encode_video),
+    )
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(sys.modules, "ltx_core.model", types.ModuleType("ltx_core.model"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_core.model.video_vae",
+        types.SimpleNamespace(get_video_chunks_number=fake_get_video_chunks_number),
+    )
+
+    output = tmp_path / "out.mp4"
+    path = persist_result(("video", "audio"), output, fps=8, num_frames=33, tiling_config="tiling")
+
+    assert path == str(output)
+    assert output.read_bytes() == b"mp4"
+    assert calls[0]["video"] == "video"
+    assert calls[0]["audio"] == "audio"
+    assert calls[0]["fps"] == 8
+    assert calls[0]["video_chunks_number"] == 7
+
+
+def test_persist_result_encodes_ltx_tuple_with_safe_default_chunk_count(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_encode_video(**kwargs):
+        calls.append(kwargs)
+        Path = __import__("pathlib").Path
+        Path(kwargs["output_path"]).write_bytes(b"mp4")
+
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_pipelines.utils.media_io",
+        types.SimpleNamespace(encode_video=fake_encode_video),
+    )
+
+    output = tmp_path / "out.mp4"
+    persist_result(("video", None), output, fps=12, num_frames=None, tiling_config=None)
+
+    assert output.read_bytes() == b"mp4"
+    assert calls[0]["video_chunks_number"] == 1
 
 
 def test_generator_test_cuda_oom_hook_fails_once(monkeypatch, tmp_path):

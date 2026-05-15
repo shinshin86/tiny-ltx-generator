@@ -57,12 +57,12 @@ class Generator:
             except Exception:
                 pass
         if request.get("mode") == "image-to-video":
-            from PIL import Image
-            image = Image.open(request["input_image"]).convert("RGB")
             if "image" in call_signature.parameters:
+                from PIL import Image
+                image = Image.open(request["input_image"]).convert("RGB")
                 kwargs["image"] = image
             elif "images" in call_signature.parameters:
-                kwargs["images"] = [(image, 0)]
+                kwargs["images"] = [_image_conditioning_input(request["input_image"])]
             else:
                 raise RuntimeError("selected pipeline does not expose image conditioning parameters")
         import torch
@@ -110,3 +110,12 @@ class Generator:
             stderr=subprocess.DEVNULL,
         )
         return str(output)
+
+
+def _image_conditioning_input(path):
+    try:
+        from ltx_pipelines.utils.args import ImageConditioningInput
+
+        return ImageConditioningInput(path=str(path), frame_idx=0, strength=1.0)
+    except Exception:
+        return (str(path), 0, 1.0)

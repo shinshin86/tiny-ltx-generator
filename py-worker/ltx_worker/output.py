@@ -14,18 +14,8 @@ def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=N
         result.save(str(output))
         return str(output)
     if isinstance(result, tuple) and len(result) == 2:
-        video, audio = result
-        try:
-            from ltx_core.model.video_vae import get_video_chunks_number
-            from ltx_pipelines.utils.media_io import encode_video
-            video_chunks_number = get_video_chunks_number(num_frames, tiling_config) if num_frames and tiling_config else None
-            kwargs = {"video": video, "fps": fps, "audio": audio, "output_path": str(output)}
-            if video_chunks_number is not None:
-                kwargs["video_chunks_number"] = video_chunks_number
-            encode_video(**kwargs)
-            return str(output)
-        except Exception as exc:
-            raise WorkerError("unsupported_pipeline", f"could not encode ltx-pipelines tuple result: {exc}")
+        _encode_ltx_tuple(result, output, fps, num_frames, tiling_config)
+        return str(output)
     for attr in ("video_path", "output_path", "path"):
         value = getattr(result, attr, None)
         if value and Path(value).exists():
@@ -41,6 +31,33 @@ def persist_result(result, output_path, fps=12, num_frames=None, tiling_config=N
         _write_video(video, output, fps)
         return str(output)
     raise WorkerError("unsupported_pipeline", "pipeline returned an unsupported result type; cannot persist video")
+
+
+def _encode_ltx_tuple(result, output, fps, num_frames, tiling_config):
+    video, audio = result
+    try:
+        from ltx_pipelines.utils.media_io import encode_video
+
+        encode_video(
+            video=video,
+            fps=fps,
+            audio=audio,
+            output_path=str(output),
+            video_chunks_number=_video_chunks_number(num_frames, tiling_config),
+        )
+    except Exception as exc:
+        raise WorkerError("unsupported_pipeline", f"could not encode ltx-pipelines tuple result: {exc}")
+
+
+def _video_chunks_number(num_frames, tiling_config):
+    if num_frames and tiling_config:
+        try:
+            from ltx_core.model.video_vae import get_video_chunks_number
+
+            return get_video_chunks_number(num_frames, tiling_config)
+        except Exception:
+            pass
+    return 1
 
 
 def _write_video(video, output, fps):
