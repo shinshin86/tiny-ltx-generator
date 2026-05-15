@@ -93,7 +93,7 @@ pub struct GenerateArgs {
     pub config: Option<String>,
     #[arg(long)]
     pub model_registry: Option<String>,
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue)]
     pub allow_auto_downgrade: bool,
     #[arg(long)]
     pub no_auto_downgrade: bool,
@@ -125,7 +125,7 @@ pub struct BatchArgs {
     pub json: bool,
     #[arg(long)]
     pub jsonl_events: bool,
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue)]
     pub continue_on_error: bool,
     #[arg(long)]
     pub stop_on_error: bool,
@@ -135,7 +135,7 @@ pub struct BatchArgs {
     pub start_index: Option<usize>,
     #[arg(long, default_value_t = false)]
     pub copy_to_drive: bool,
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue)]
     pub keep_model_warm: bool,
     #[arg(long, default_value_t = false)]
     pub unload_between_jobs: bool,
@@ -240,6 +240,47 @@ impl From<ModelArg> for ModelId {
             ModelArg::Ltx2_3DistilledFp8 => Self::Ltx2_3DistilledFp8,
             ModelArg::Ltx2_3Distilled => Self::Ltx2_3Distilled,
             ModelArg::Ltxv13bDistilledFp8 => Self::Ltxv13bDistilledFp8,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn batch_continue_on_error_accepts_flag_without_value() {
+        let cli = Cli::try_parse_from([
+            "ltx-runner",
+            "batch",
+            "--jobs",
+            "configs/batch.example.jsonl",
+            "--continue-on-error",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Commands::Batch(args) => assert!(args.continue_on_error),
+            _ => panic!("expected batch command"),
+        }
+    }
+
+    #[test]
+    fn generate_allow_auto_downgrade_accepts_flag_without_value() {
+        let cli = Cli::try_parse_from([
+            "ltx-runner",
+            "generate",
+            "--mode",
+            "text-to-video",
+            "--prompt",
+            "hello",
+            "--allow-auto-downgrade",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Commands::Generate(args) => assert!(args.allow_auto_downgrade),
+            _ => panic!("expected generate command"),
         }
     }
 }
