@@ -32,10 +32,10 @@ Recommended paths:
 The default path is to download models into `/content/models` on each setup:
 
 ```bash
-LTX_DOWNLOAD_VARIANT=ltx2_3_distilled bash scripts/bootstrap_colab.sh --download-models
+LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8 bash scripts/bootstrap_colab.sh --download-models
 ```
 
-This keeps Drive optional. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
+This keeps Drive optional. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
 
 ## CLI From Notebook Cells
 

@@ -27,11 +27,12 @@ bash scripts/bootstrap_colab.sh --download-models
 
 The bootstrap script installs Rust, `uv`, and `ffmpeg` only when missing, builds `ltx-runner`, prepares `/content/outputs`, `/content/ltx_tmp`, and `/content/models`, then runs `ltx-runner check`.
 
-Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled`, which downloads the official LTX 2.3 distilled checkpoint, spatial upscaler, and Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
+Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8`, which downloads the official LTX 2.3 distilled FP8 checkpoint, spatial upscaler, and Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
 
 Other supported setup variants:
 
 ```bash
+LTX_DOWNLOAD_VARIANT=ltx2_3_distilled bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_fp8 bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_full bash scripts/bootstrap_colab.sh --download-models
 ```

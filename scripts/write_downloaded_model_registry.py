@@ -17,7 +17,7 @@ def main():
         "ltx2_3_full": model_dir / "ltx-2.3-22b-dev.safetensors",
         "ltx2_3_fp8": model_dir / "ltx-2.3-22b-dev-fp8.safetensors",
         "ltx2_3_distilled_fp8": model_dir / "ltx-2.3-22b-distilled-fp8.safetensors",
-        "ltx2_3_distilled": model_dir / "ltx-2.3-22b-distilled-1.1.safetensors",
+        "ltx2_3_distilled": model_dir / "ltx-2.3-22b-distilled.safetensors",
     }
     enabled = args.variant
     if enabled not in paths:
@@ -79,7 +79,7 @@ notes = "{notes}"
         False,
         False,
         '["colab_tiny", "colab_eco", "colab_balanced"]',
-        "Default Colab download target.",
+        "BF16 distilled variant. Use when FP8 is unavailable or not desired.",
     )
     registry += '''
 [models.ltxv_13b_distilled_fp8]

@@ -69,7 +69,7 @@ This validates the CLI orchestration path without requiring a real model load.
 Run only when model download time and storage are acceptable.
 
 ```bash
-LTX_DOWNLOAD_VARIANT=ltx2_3_distilled bash scripts/bootstrap_colab.sh --download-models
+LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8 bash scripts/bootstrap_colab.sh --download-models
 ./target/release/ltx-runner generate \
   --profile colab_tiny \
   --model auto \

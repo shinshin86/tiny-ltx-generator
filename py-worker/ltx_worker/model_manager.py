@@ -24,6 +24,11 @@ class ModelManager:
         if model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
             self.pipeline = self._load_from_config(pipeline_cls, model_entry, kwargs, offload_mode)
         elif pipeline_cls.__name__ == "DistilledPipeline":
+            if not _is_distilled_model(model_key, model_entry):
+                raise WorkerError(
+                    "unsupported_pipeline",
+                    "DistilledPipeline requires a distilled model; provide a config_path for non-distilled variants",
+                )
             self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs, offload_mode)
         elif hasattr(pipeline_cls, "from_config"):
             raise WorkerError("unsupported_pipeline", "this pipeline requires config_path in the model registry")
@@ -124,3 +129,12 @@ class ModelManager:
                 self.pipeline.to("cuda")
         except Exception:
             pass
+
+
+def _is_distilled_model(model_key, model_entry):
+    values = [
+        model_key or "",
+        model_entry.get("display_name") or "",
+        model_entry.get("checkpoint_path") or "",
+    ]
+    return any("distilled" in value.lower() for value in values)

@@ -26,14 +26,14 @@ MARKER="$VALIDATION_ROOT/test_cuda_oom_once.marker"
 
 rm -rf "$VALIDATION_ROOT"
 mkdir -p "$MODEL_DIR/gemma" "$OUT_DIR"
-touch "$MODEL_DIR/ltx-2.3-22b-distilled-1.1.safetensors"
+touch "$MODEL_DIR/ltx-2.3-22b-distilled.safetensors"
 touch "$MODEL_DIR/ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
 printf '{}\n' >"$MODEL_DIR/gemma/config.json"
 
 cat >"$REGISTRY" <<EOF
 [models.ltx2_3_distilled]
 display_name = "LTX 2.3 distilled validation fake"
-checkpoint_path = "$MODEL_DIR/ltx-2.3-22b-distilled-1.1.safetensors"
+checkpoint_path = "$MODEL_DIR/ltx-2.3-22b-distilled.safetensors"
 config_path = ""
 gemma_root = "$MODEL_DIR/gemma"
 text_encoder_path = ""

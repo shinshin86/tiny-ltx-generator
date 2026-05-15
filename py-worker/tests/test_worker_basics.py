@@ -115,6 +115,28 @@ def test_model_manager_prefers_from_config_when_config_path_exists():
     }]
 
 
+def test_model_manager_rejects_full_model_on_distilled_loading_path():
+    class DistilledPipeline:
+        pass
+
+    manager = ModelManager(lambda *_args: None)
+    try:
+        manager.pipeline = None
+        manager.loaded_key = None
+        manager._find_pipeline = lambda *_args: DistilledPipeline
+        manager.load("req", {
+            "id": "ltx2_3_full",
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev.safetensors",
+            "gemma_root": "/content/models/gemma",
+            "spatial_upsampler_path": "/content/models/upscaler.safetensors",
+        }, "colab_balanced")
+    except WorkerError as exc:
+        assert exc.code == "unsupported_pipeline"
+        assert "distilled model" in exc.message
+    else:
+        raise AssertionError("full model should not be loaded through DistilledPipeline")
+
+
 def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
     class InferenceMode:
         def __enter__(self):
