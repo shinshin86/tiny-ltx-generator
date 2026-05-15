@@ -76,6 +76,15 @@ pub async fn run(args: GenerateArgs) -> Result<()> {
     )?;
     let events_path = Path::new(&resolved.job_dir).join("events.jsonl");
     if resolved.mock {
+        protocol::record_event(
+            &events_path,
+            &WorkerResponse {
+                id: resolved.job_id.clone(),
+                response_type: "log".to_string(),
+                payload: json!({"stage": "mock_generation", "mock": true}),
+            },
+            args.jsonl_events,
+        )?;
         ffmpeg::write_mock_mp4(
             &resolved.output_path,
             resolved.width,

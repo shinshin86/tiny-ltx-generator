@@ -194,7 +194,17 @@ async fn run_batch_job(
         format!("{}/resolved_request.json", resolved.job_dir),
         &resolved,
     )?;
+    let events_path = Path::new(&resolved.job_dir).join("events.jsonl");
     if resolved.mock {
+        protocol::record_event(
+            &events_path,
+            &WorkerResponse {
+                id: resolved.job_id.clone(),
+                response_type: "log".to_string(),
+                payload: json!({"stage": "mock_generation", "mock": true, "batch_index": index}),
+            },
+            jsonl_events,
+        )?;
         ffmpeg::write_mock_mp4(
             &resolved.output_path,
             resolved.width,
@@ -202,13 +212,16 @@ async fn run_batch_job(
             resolved.fps,
         )?;
         write_metadata("success", None, resolved.clone(), Some(model_entry), true).await?;
+        storage::write_json(
+            format!("{}/worker_stats.json", resolved.job_dir),
+            &json!({"mock": true}),
+        )?;
         copy_to_drive_if_requested(copy_to_drive, config, &resolved)?;
         return Ok(());
     }
     let Some(worker) = worker else {
         return Err(AppError::WorkerCrash("batch worker is not available".to_string()).into());
     };
-    let events_path = Path::new(&resolved.job_dir).join("events.jsonl");
     let mut model_payload = serde_json::to_value(model_entry.clone())?;
     if let Some(obj) = model_payload.as_object_mut() {
         obj.insert("id".to_string(), json!(model_key(selected_model)));
