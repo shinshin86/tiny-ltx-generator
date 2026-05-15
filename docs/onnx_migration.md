@@ -19,6 +19,18 @@ Validation for every component:
 - latency
 - memory usage
 
+The first validation tool stage compares saved PyTorch baseline output with candidate output:
+
+```bash
+python tools/validate_onnx_component.py \
+  --component vae-decoder \
+  --baseline-output /content/baseline.json \
+  --candidate-output /content/candidate.json \
+  --json
+```
+
+Use `.json` nested numeric arrays for lightweight tests or `.npy` files when numpy is available. The tool reports shape, max absolute error, mean absolute error, and pass/fail thresholds.
+
 Provider fallback:
 
 ```text
