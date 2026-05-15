@@ -18,7 +18,7 @@ hf_download() {
   local include="$2"
   local dest="$3"
   mkdir -p "$dest"
-  uv run --project py-worker huggingface-cli download "$repo" \
+  uv run --project py-worker hf download "$repo" \
     --include "$include" \
     --local-dir "$dest" \
     "${HF_ARGS[@]}"
@@ -30,7 +30,7 @@ download_gemma() {
     echo "Gemma text encoder already exists: $dest" >&2
     return
   fi
-  uv run --project py-worker huggingface-cli download "$GEMMA_REPO" \
+  uv run --project py-worker hf download "$GEMMA_REPO" \
     --local-dir "$dest" \
     "${HF_ARGS[@]}"
 }

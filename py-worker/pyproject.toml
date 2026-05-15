@@ -8,7 +8,7 @@ dependencies = [
   "safetensors",
   "pillow",
   "imageio[ffmpeg]",
-  "huggingface_hub[cli]",
+  "huggingface_hub",
   "pytest",
 ]
 
