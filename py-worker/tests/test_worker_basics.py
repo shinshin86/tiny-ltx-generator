@@ -20,6 +20,17 @@ def test_memory_stats_no_raise():
     assert "torch_import_ok" in stats
 
 
+def test_memory_stats_handles_torch_without_cuda(monkeypatch):
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(__version__="stub"))
+    stats = memory_stats()
+    health = torch_health()
+
+    assert stats == {"torch_import_ok": True, "cuda_available": False}
+    assert health["import_ok"] is True
+    assert health["cuda_available"] is False
+    assert health["device_count"] == 0
+
+
 def test_validate_request_accepts_text_to_video():
     validate_request({
         "mode": "text-to-video",

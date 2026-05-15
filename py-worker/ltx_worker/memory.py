@@ -1,3 +1,15 @@
+def _cuda_module(torch):
+    return getattr(torch, "cuda", None)
+
+
+def _cuda_available(torch):
+    cuda = _cuda_module(torch)
+    is_available = getattr(cuda, "is_available", None)
+    if not callable(is_available):
+        return False
+    return bool(is_available())
+
+
 def torch_health():
     try:
         import torch
@@ -13,17 +25,26 @@ def torch_health():
             "reserved_vram_mb": None,
             "error": str(exc),
         }
-    cuda_available = bool(torch.cuda.is_available())
-    device_count = int(torch.cuda.device_count()) if cuda_available else 0
+    cuda = _cuda_module(torch)
+    cuda_available = _cuda_available(torch)
+    device_count_fn = getattr(cuda, "device_count", None)
+    device_count = (
+        int(device_count_fn()) if cuda_available and callable(device_count_fn) else 0
+    )
+    torch_version = getattr(torch, "version", None)
     return {
         "import_ok": True,
         "version": getattr(torch, "__version__", None),
         "cuda_available": cuda_available,
-        "cuda_version": getattr(torch.version, "cuda", None),
+        "cuda_version": getattr(torch_version, "cuda", None),
         "device_count": device_count,
-        "gpu_name": torch.cuda.get_device_name(0) if device_count else None,
-        "allocated_vram_mb": int(torch.cuda.memory_allocated(0) / 1024 / 1024) if device_count else None,
-        "reserved_vram_mb": int(torch.cuda.memory_reserved(0) / 1024 / 1024) if device_count else None,
+        "gpu_name": cuda.get_device_name(0) if device_count else None,
+        "allocated_vram_mb": int(cuda.memory_allocated(0) / 1024 / 1024)
+        if device_count
+        else None,
+        "reserved_vram_mb": int(cuda.memory_reserved(0) / 1024 / 1024)
+        if device_count
+        else None,
         "error": None,
     }
 
@@ -33,13 +54,17 @@ def memory_stats():
         import torch
     except Exception as exc:
         return {"torch_import_ok": False, "error": str(exc)}
-    stats = {"torch_import_ok": True, "cuda_available": bool(torch.cuda.is_available())}
-    if torch.cuda.is_available():
+    cuda = _cuda_module(torch)
+    cuda_available = _cuda_available(torch)
+    stats = {"torch_import_ok": True, "cuda_available": cuda_available}
+    if cuda_available:
         stats.update({
-            "allocated_vram_mb": int(torch.cuda.memory_allocated(0) / 1024 / 1024),
-            "reserved_vram_mb": int(torch.cuda.memory_reserved(0) / 1024 / 1024),
-            "max_allocated_vram_mb": int(torch.cuda.max_memory_allocated(0) / 1024 / 1024),
-            "max_reserved_vram_mb": int(torch.cuda.max_memory_reserved(0) / 1024 / 1024),
+            "allocated_vram_mb": int(cuda.memory_allocated(0) / 1024 / 1024),
+            "reserved_vram_mb": int(cuda.memory_reserved(0) / 1024 / 1024),
+            "max_allocated_vram_mb": int(
+                cuda.max_memory_allocated(0) / 1024 / 1024
+            ),
+            "max_reserved_vram_mb": int(cuda.max_memory_reserved(0) / 1024 / 1024),
         })
     return stats
 
@@ -49,7 +74,9 @@ def cleanup_cuda():
     gc.collect()
     try:
         import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        cuda = _cuda_module(torch)
+        empty_cache = getattr(cuda, "empty_cache", None)
+        if _cuda_available(torch) and callable(empty_cache):
+            empty_cache()
     except Exception:
         pass
