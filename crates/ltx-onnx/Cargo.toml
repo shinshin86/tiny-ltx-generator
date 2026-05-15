@@ -1,0 +1,13 @@
+[package]
+name = "ltx-onnx"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+onnx = ["dep:ort"]
+
+[dependencies]
+ort = { version = "2.0.0-rc.10", optional = true }
+thiserror = "1"

@@ -1,0 +1,89 @@
+[models.ltx2_3_full]
+display_name = "LTX 2.3 full"
+checkpoint_path = "/content/models/ltx-2.3-22b-dev.safetensors"
+config_path = "/content/models/ltx-2.3-full-config.yaml"
+gemma_root = ""
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = true
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = false
+supports_fp8_scaled_mm = false
+quantization = "none"
+preferred_profiles = ["colab_quality"]
+notes = "Full model. Configure paths after downloading official Lightricks files."
+
+[models.ltx2_3_fp8]
+display_name = "LTX 2.3 FP8"
+checkpoint_path = "/content/models/ltx-2.3-22b-dev-fp8.safetensors"
+config_path = "/content/models/ltx-2.3-fp8-config.yaml"
+gemma_root = ""
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = true
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = true
+supports_fp8_scaled_mm = true
+quantization = "fp8-cast"
+preferred_profiles = ["colab_balanced", "colab_quality"]
+notes = "FP8 variant. TensorRT scaled-mm is optional and must be supported by the runtime."
+
+[models.ltx2_3_distilled_fp8]
+display_name = "LTX 2.3 distilled FP8"
+checkpoint_path = "/content/models/ltx-2.3-22b-distilled-1.1-fp8.safetensors"
+config_path = "/content/models/ltx-2.3-distilled-fp8-config.yaml"
+gemma_root = ""
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = false
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = true
+supports_fp8_scaled_mm = true
+quantization = "fp8-cast"
+preferred_profiles = ["colab_tiny", "colab_eco", "colab_balanced"]
+notes = "Preferred low-VRAM profile target. Replace paths with the actual configured files."
+
+[models.ltx2_3_distilled]
+display_name = "LTX 2.3 distilled"
+checkpoint_path = "/content/models/ltx-2.3-22b-distilled-1.1.safetensors"
+config_path = "/content/models/ltx-2.3-distilled-config.yaml"
+gemma_root = ""
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = false
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = false
+supports_fp8_scaled_mm = false
+quantization = "none"
+preferred_profiles = ["colab_tiny", "colab_eco", "colab_balanced"]
+notes = "Distilled model for fewer steps."
+
+[models.ltxv_13b_distilled_fp8]
+display_name = "LTXV 13B distilled FP8 fallback"
+checkpoint_path = "/content/models/ltxv-13b-distilled-fp8.safetensors"
+config_path = "/content/models/ltxv-13b-distilled-fp8-config.yaml"
+gemma_root = ""
+text_encoder_path = ""
+vae_path = ""
+spatial_upsampler_path = ""
+temporal_upsampler_path = ""
+supports_audio = false
+supports_t2v = true
+supports_i2v = true
+supports_fp8_cast = true
+supports_fp8_scaled_mm = false
+quantization = "fp8-cast"
+preferred_profiles = ["colab_tiny", "colab_eco"]
+notes = "Optional fallback only. Configure explicitly if used."

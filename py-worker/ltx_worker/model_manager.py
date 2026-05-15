@@ -1,0 +1,100 @@
+import importlib
+import inspect
+from .errors import WorkerError
+from .memory import cleanup_cuda, memory_stats
+from .profiles import preferred_pipeline_names
+
+
+class ModelManager:
+    def __init__(self, emit):
+        self.emit = emit
+        self.pipeline = None
+        self.loaded_key = None
+
+    def load(self, request_id, model_entry, profile):
+        model_key = model_entry.get("id") or model_entry.get("display_name") or "configured_model"
+        if self.pipeline is not None and self.loaded_key == (model_key, profile):
+            return
+        self.unload()
+        self.emit(request_id, "progress", {"stage": "before_load", "memory": memory_stats()})
+        pipeline_cls = self._find_pipeline(model_key, profile)
+        kwargs = self._quantization_kwargs(model_entry)
+        if pipeline_cls.__name__ == "DistilledPipeline":
+            self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs)
+        elif model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
+            self.pipeline = pipeline_cls.from_config(model_entry["config_path"], **kwargs)
+        elif hasattr(pipeline_cls, "from_config"):
+            raise WorkerError("unsupported_pipeline", "this pipeline requires config_path in the model registry")
+        else:
+            raise WorkerError("unsupported_pipeline", f"{pipeline_cls.__name__} loading path is not supported yet")
+        self._to_cuda_if_possible()
+        self.loaded_key = (model_key, profile)
+        self.emit(request_id, "progress", {"stage": "after_load", "memory": memory_stats()})
+
+    def unload(self):
+        self.pipeline = None
+        self.loaded_key = None
+        cleanup_cuda()
+
+    def _find_pipeline(self, model_key, profile):
+        errors = []
+        for module_name, class_name in preferred_pipeline_names(model_key, profile):
+            try:
+                module = importlib.import_module(module_name)
+                pipeline_cls = getattr(module, class_name)
+                return pipeline_cls
+            except Exception as exc:
+                errors.append(f"{module_name}.{class_name}: {exc}")
+        raise WorkerError("unsupported_pipeline", "no supported ltx-pipelines pipeline found", attempts=errors)
+
+    def _quantization_kwargs(self, model_entry):
+        mode = model_entry.get("quantization")
+        if not mode or mode == "none":
+            return {}
+        if mode == "fp8-cast" and not model_entry.get("supports_fp8_cast"):
+            raise WorkerError("unsupported_option", "model registry says fp8-cast is unsupported")
+        if mode == "fp8-scaled-mm" and not model_entry.get("supports_fp8_scaled_mm"):
+            raise WorkerError("unsupported_option", "model registry says fp8-scaled-mm is unsupported")
+        try:
+            from ltx_core.quantization.policy import QuantizationPolicy
+        except Exception as exc:
+            raise WorkerError("unsupported_option", f"quantization requested but QuantizationPolicy is unavailable: {exc}")
+        if mode == "fp8-cast":
+            return {"quantization": QuantizationPolicy.fp8_cast()}
+        if mode == "fp8-scaled-mm":
+            return {"quantization": QuantizationPolicy.fp8_scaled_mm()}
+        raise WorkerError("unsupported_option", f"unsupported quantization mode: {mode}")
+
+    def _load_distilled_pipeline(self, pipeline_cls, model_entry, kwargs):
+        checkpoint_path = model_entry.get("checkpoint_path")
+        gemma_root = model_entry.get("gemma_root")
+        spatial_upsampler_path = model_entry.get("spatial_upsampler_path")
+        missing = [
+            name
+            for name, value in [
+                ("checkpoint_path", checkpoint_path),
+                ("gemma_root", gemma_root),
+                ("spatial_upsampler_path", spatial_upsampler_path),
+            ]
+            if not value
+        ]
+        if missing:
+            raise WorkerError("missing_model_files", f"DistilledPipeline requires: {', '.join(missing)}")
+        signature = inspect.signature(pipeline_cls)
+        init_kwargs = {
+            "distilled_checkpoint_path": checkpoint_path,
+            "gemma_root": gemma_root,
+            "spatial_upsampler_path": spatial_upsampler_path,
+            "loras": (),
+        }
+        init_kwargs.update(kwargs)
+        filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
+        return pipeline_cls(**filtered)
+
+    def _to_cuda_if_possible(self):
+        try:
+            import torch
+            if torch.cuda.is_available() and hasattr(self.pipeline, "to"):
+                self.pipeline.to("cuda")
+        except Exception:
+            pass

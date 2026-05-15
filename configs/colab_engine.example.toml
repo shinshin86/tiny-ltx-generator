@@ -1,0 +1,6 @@
+output_dir = "/content/outputs"
+tmp_dir = "/content/ltx_tmp"
+model_dir = "/content/models"
+model_registry = "configs/model_registry.toml"
+python_worker = "py-worker/worker.py"
+drive_root = "/content/drive/MyDrive/tiny-ltx-generator"

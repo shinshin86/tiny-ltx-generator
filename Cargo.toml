@@ -1,0 +1,11 @@
+[workspace]
+members = [
+  "crates/ltx-core",
+  "crates/ltx-runner",
+  "crates/ltx-onnx",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
