@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use ltx_core::job_artifacts::REQUIRED_SUCCESS_FILES;
 use ltx_core::reset_plan::restart_plan;
 use ltx_core::template_patcher::{apply_template_patch, TemplatePatchRequest};
 use ltx_core::workflow_contract::validate_ltx23_template;
@@ -26,6 +27,7 @@ enum Command {
         json: bool,
     },
     PatchTemplate(PatchTemplateArgs),
+    PrepareRun(PrepareRunArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -58,6 +60,18 @@ struct PatchTemplateArgs {
     lora_strength: f64,
     #[arg(long)]
     spatial_upscaler: String,
+}
+
+#[derive(Debug, Parser)]
+struct PrepareRunArgs {
+    #[command(flatten)]
+    patch: PatchTemplateArgs,
+    #[arg(long)]
+    out_dir: PathBuf,
+    #[arg(long)]
+    job_id: String,
+    #[arg(long, default_value = "/content/ComfyUI")]
+    comfy_root: PathBuf,
 }
 
 fn main() {
@@ -119,6 +133,94 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 },
             )?;
             println!("{}", serde_json::to_string_pretty(&patched.workflow)?);
+        }
+        Command::PrepareRun(args) => {
+            let workflow_raw = fs::read_to_string(&args.patch.workflow)?;
+            let manifest_raw = fs::read_to_string(&args.patch.manifest)?;
+            let request = TemplatePatchRequest {
+                prompt: args.patch.prompt,
+                negative_prompt: args.patch.negative_prompt,
+                width: args.patch.width,
+                height: args.patch.height,
+                duration_seconds: args.patch.duration_seconds,
+                fps: args.patch.fps,
+                seed: args.patch.seed,
+                checkpoint: args.patch.checkpoint,
+                text_encoder: args.patch.text_encoder,
+                distilled_lora: args.patch.distilled_lora,
+                lora_strength: args.patch.lora_strength,
+                spatial_upscaler: args.patch.spatial_upscaler,
+            };
+            let patched = apply_template_patch(&workflow_raw, &manifest_raw, &request)?;
+            let job_dir = args.out_dir.join("jobs").join(&args.job_id);
+            fs::create_dir_all(&job_dir)?;
+
+            let patched_workflow_path = job_dir.join("patched_workflow.json");
+            let output_path = job_dir.join("output.mp4");
+            fs::write(
+                &patched_workflow_path,
+                serde_json::to_string_pretty(&patched.workflow)?,
+            )?;
+            fs::write(job_dir.join("prompt.txt"), format!("{}\n", request.prompt))?;
+            fs::write(
+                job_dir.join("resolved_request.json"),
+                serde_json::to_string_pretty(&json!({
+                    "job_id": args.job_id,
+                    "prompt": request.prompt,
+                    "negative_prompt": request.negative_prompt,
+                    "width": request.width,
+                    "height": request.height,
+                    "duration_seconds": request.duration_seconds,
+                    "fps": request.fps,
+                    "seed": request.seed,
+                    "checkpoint": request.checkpoint,
+                    "text_encoder": request.text_encoder,
+                    "distilled_lora": request.distilled_lora,
+                    "lora_strength": request.lora_strength,
+                    "spatial_upscaler": request.spatial_upscaler,
+                }))?,
+            )?;
+            fs::write(
+                job_dir.join("metadata.json"),
+                serde_json::to_string_pretty(&json!({
+                    "job_id": args.job_id,
+                    "status": "prepared",
+                    "workflow_source": args.patch.workflow,
+                    "manifest_source": args.patch.manifest,
+                    "changed_controls": patched.changed_controls,
+                }))?,
+            )?;
+            fs::write(
+                job_dir.join("adapter_request.json"),
+                serde_json::to_string_pretty(&json!({
+                    "schema_version": 1,
+                    "backend": "comfyui_headless",
+                    "comfy_root": args.comfy_root,
+                    "job_dir": job_dir,
+                    "workflow_path": patched_workflow_path,
+                    "output_path": output_path,
+                    "required_success_files": REQUIRED_SUCCESS_FILES,
+                }))?,
+            )?;
+            fs::write(
+                job_dir.join("events.jsonl"),
+                format!(
+                    "{}\n",
+                    serde_json::to_string(&json!({
+                        "type": "prepared",
+                        "job_id": args.job_id,
+                    }))?
+                ),
+            )?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&json!({
+                    "status": "prepared",
+                    "job_id": args.job_id,
+                    "job_dir": job_dir,
+                    "adapter_request": job_dir.join("adapter_request.json"),
+                }))?
+            );
         }
     }
     Ok(())

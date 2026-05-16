@@ -40,3 +40,5 @@ cargo run -p ltx-runner -- patch-template \
 ```
 
 The next implementation step is the Colab-only headless adapter that runs the patched template through ComfyUI and writes the required job artifacts.
+
+`scripts/comfy_headless_adapter.py --dry-run` currently validates the adapter request shape. Full ComfyUI execution is intentionally gated until it is verified on Colab.
