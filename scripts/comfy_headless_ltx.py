@@ -33,7 +33,7 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     folder_paths.set_output_directory(str(output_path.parent))
 
-    asyncio.run(nodes.init_extra_nodes(init_custom_nodes=True))
+    asyncio.run(nodes.init_extra_nodes(init_custom_nodes=True, init_api_nodes=False))
     prompt = _build_prompt(payload)
     prompt_id = str(uuid.uuid4())
     executor = execution.PromptExecutor(_Server(), cache_args={"ram": 0})
@@ -72,7 +72,7 @@ def _build_prompt(payload):
     cfg = float(request.get("guidance_scale") or 1.0)
     prompt = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
-        "2": {"class_type": "LTXVGemmaCLIPModelLoader", "inputs": {"gemma_path": text_encoder, "ltxv_path": checkpoint, "max_length": 1024}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": text_encoder, "type": "ltxv"}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": request["prompt"]}},
         "4": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": request.get("negative_prompt") or ""}},
         "5": {"class_type": "LTXVConditioning", "inputs": {"positive": ["3", 0], "negative": ["4", 0], "frame_rate": fps}},

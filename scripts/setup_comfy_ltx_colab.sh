@@ -16,9 +16,9 @@ else
   git -C "$COMFY_LTX_ROOT" pull --ff-only
 fi
 
-uv pip install --project py-worker -r "$COMFY_ROOT/requirements.txt"
+uv pip install --python python3 -r "$COMFY_ROOT/requirements.txt"
 if [[ -f "$COMFY_LTX_ROOT/requirements.txt" ]]; then
-  uv pip install --project py-worker -r "$COMFY_LTX_ROOT/requirements.txt"
+  uv pip install --python python3 -r "$COMFY_LTX_ROOT/requirements.txt"
 fi
 
 mkdir -p \

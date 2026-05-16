@@ -106,6 +106,16 @@ fn colab_download_scripts_track_default_low_vram_variant() {
 }
 
 #[test]
+fn comfy_headless_runner_uses_native_ltxv_clip_loader() {
+    let runner = fs::read_to_string("../../scripts/comfy_headless_ltx.py").unwrap();
+
+    assert!(runner.contains("\"class_type\": \"CLIPLoader\""));
+    assert!(runner.contains("\"type\": \"ltxv\""));
+    assert!(!runner.contains("\"class_type\": \"LTXVGemmaCLIPModelLoader\""));
+    assert!(runner.contains("init_api_nodes=False"));
+}
+
+#[test]
 fn balanced_examples_do_not_request_fps_above_profile_cap() {
     let batch = fs::read_to_string("../../configs/batch.example.jsonl").unwrap();
     for (idx, line) in batch.lines().enumerate() {
