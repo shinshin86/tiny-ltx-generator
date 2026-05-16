@@ -30,6 +30,14 @@ fn canonical_workflow_converts_to_comfy_api_prompt_dependency_closure() {
         api.prompt["246"]["inputs"]["sampler_name"],
         Value::String("euler_cfg_pp".to_string())
     );
+    assert_eq!(
+        api.prompt["238"]["inputs"]["scale_method"],
+        Value::String("lanczos".to_string())
+    );
+    assert!(
+        api.prompt["238"]["inputs"].get("interpolation").is_none(),
+        "old UI widget name must be converted to the current Comfy API input"
+    );
 }
 
 #[test]

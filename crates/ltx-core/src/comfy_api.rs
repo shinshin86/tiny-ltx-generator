@@ -336,7 +336,7 @@ fn widget_mapping(class_type: &str) -> Result<Vec<(usize, &'static str)>, ComfyA
             (1, "resize_type.width"),
             (2, "resize_type.height"),
             (3, "crop"),
-            (4, "interpolation"),
+            (4, "scale_method"),
         ],
         "LTXVPreprocess" => vec![(0, "padding")],
         "LTXVImgToVideoInplace" => vec![(0, "strength"), (1, "replace_latent")],
