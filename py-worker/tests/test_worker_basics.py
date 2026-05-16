@@ -199,11 +199,16 @@ def test_model_manager_emits_offload_fallback_warning_during_load(monkeypatch):
 
     manager = ModelManager(lambda *args: events.append(args))
     manager._find_pipeline = lambda *_args: FakePipeline
-    manager.load("req", {
-        "id": "ltx2_3_fp8",
-        "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
-        "gemma_root": "/content/models/gemma",
-    }, "colab_tiny")
+    try:
+        manager.load("req", {
+            "id": "ltx2_3_fp8",
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "gemma_root": "/content/models/gemma",
+        }, "colab_tiny")
+    except WorkerError as exc:
+        assert exc.code == "unsupported_pipeline"
+    else:
+        raise AssertionError("fake pipeline should not load successfully")
 
     assert any(
         event[1] == "log"
