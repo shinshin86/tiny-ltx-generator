@@ -28,6 +28,10 @@ pub enum ComfyApiError {
         node_type: String,
         widget_index: usize,
     },
+    #[error("reroute node is missing input link: {0}")]
+    MissingRerouteInput(i64),
+    #[error("reroute cycle detected at node: {0}")]
+    RerouteCycle(i64),
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +64,7 @@ pub fn workflow_value_to_api_prompt(workflow: &Value) -> Result<ComfyApiPrompt, 
     node_by_id.insert(save_video_id, save_video);
 
     let link_by_id = link_map(subgraph)?;
+    let output_source = resolve_reroute_link(output_source, &node_by_id, &link_by_id)?;
     let mut needed = BTreeSet::new();
     collect_dependencies(
         output_source.origin_id,
@@ -75,10 +80,13 @@ pub fn workflow_value_to_api_prompt(workflow: &Value) -> Result<ComfyApiPrompt, 
         let class_type = node_type(node)
             .ok_or(ComfyApiError::MissingNode(id))?
             .to_string();
+        if class_type == "Reroute" {
+            continue;
+        }
         let mut inputs = if id == save_video_id {
             Map::new()
         } else {
-            node_inputs(node, &link_by_id)?
+            node_inputs(node, &node_by_id, &link_by_id)?
         };
         if id == save_video_id {
             inputs.insert(
@@ -174,18 +182,27 @@ fn collect_dependencies(
     link_by_id: &BTreeMap<u64, Link>,
     needed: &mut BTreeSet<i64>,
 ) -> Result<(), ComfyApiError> {
-    if node_id_value < 0 || !needed.insert(node_id_value) {
+    if node_id_value < 0 {
         return Ok(());
     }
     let node = node_by_id
         .get(&node_id_value)
         .ok_or(ComfyApiError::MissingNode(node_id_value))?;
+    if node_type(node) == Some("Reroute") {
+        let source = reroute_source(node, node_by_id, link_by_id, &mut BTreeSet::new())?;
+        collect_dependencies(source.origin_id, node_by_id, link_by_id, needed)?;
+        return Ok(());
+    }
+    if !needed.insert(node_id_value) {
+        return Ok(());
+    }
     for input in input_array(node) {
         if let Some(link_id) = input.get("link").and_then(Value::as_u64) {
             let link = link_by_id
                 .get(&link_id)
                 .ok_or(ComfyApiError::MissingLink(link_id))?;
-            collect_dependencies(link.origin_id, node_by_id, link_by_id, needed)?;
+            let source = resolve_reroute_link(link.clone(), node_by_id, link_by_id)?;
+            collect_dependencies(source.origin_id, node_by_id, link_by_id, needed)?;
         }
     }
     Ok(())
@@ -193,6 +210,7 @@ fn collect_dependencies(
 
 fn node_inputs(
     node: &Value,
+    node_by_id: &BTreeMap<i64, &Value>,
     link_by_id: &BTreeMap<u64, Link>,
 ) -> Result<Map<String, Value>, ComfyApiError> {
     let mut inputs = Map::new();
@@ -208,8 +226,12 @@ fn node_inputs(
             let link = link_by_id
                 .get(&link_id)
                 .ok_or(ComfyApiError::MissingLink(link_id))?;
-            if link.origin_id >= 0 {
-                inputs.insert(name, json!([link.origin_id.to_string(), link.origin_slot]));
+            let source = resolve_reroute_link(link.clone(), node_by_id, link_by_id)?;
+            if source.origin_id >= 0 {
+                inputs.insert(
+                    name,
+                    json!([source.origin_id.to_string(), source.origin_slot]),
+                );
                 continue;
             }
         }
@@ -221,6 +243,46 @@ fn node_inputs(
         }
     }
     Ok(inputs)
+}
+
+fn resolve_reroute_link(
+    link: Link,
+    node_by_id: &BTreeMap<i64, &Value>,
+    link_by_id: &BTreeMap<u64, Link>,
+) -> Result<Link, ComfyApiError> {
+    let Some(node) = node_by_id.get(&link.origin_id) else {
+        return Ok(link);
+    };
+    if node_type(node) != Some("Reroute") {
+        return Ok(link);
+    }
+    reroute_source(node, node_by_id, link_by_id, &mut BTreeSet::new())
+}
+
+fn reroute_source(
+    reroute: &Value,
+    node_by_id: &BTreeMap<i64, &Value>,
+    link_by_id: &BTreeMap<u64, Link>,
+    visited: &mut BTreeSet<i64>,
+) -> Result<Link, ComfyApiError> {
+    let reroute_id = node_id(reroute)?;
+    if !visited.insert(reroute_id) {
+        return Err(ComfyApiError::RerouteCycle(reroute_id));
+    }
+    let incoming_link_id = input_array(reroute)
+        .find_map(|input| input.get("link").and_then(Value::as_u64))
+        .ok_or(ComfyApiError::MissingRerouteInput(reroute_id))?;
+    let incoming = link_by_id
+        .get(&incoming_link_id)
+        .ok_or(ComfyApiError::MissingLink(incoming_link_id))?
+        .clone();
+    let Some(source_node) = node_by_id.get(&incoming.origin_id) else {
+        return Ok(incoming);
+    };
+    if node_type(source_node) == Some("Reroute") {
+        return reroute_source(source_node, node_by_id, link_by_id, visited);
+    }
+    Ok(incoming)
 }
 
 fn add_widget_inputs(

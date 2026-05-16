@@ -25,4 +25,6 @@ fn adapter_supports_dry_run_before_colab_execution_is_enabled() {
     assert!(script.contains("execute_outputs"));
     assert!(script.contains("visual_check.json"));
     assert!(script.contains("worker_stats.json"));
+    assert!(script.contains("os.chdir(comfy_root)"));
+    assert!(script.contains("utils.install_util"));
 }

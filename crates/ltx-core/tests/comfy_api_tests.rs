@@ -15,6 +15,7 @@ fn canonical_workflow_converts_to_comfy_api_prompt_dependency_closure() {
         api.prompt.get("267").is_none(),
         "subgraph wrapper must not be executed"
     );
+    assert_no_reroute_nodes(&api.prompt);
     assert_eq!(api.prompt["75"]["class_type"], "SaveVideo");
     assert_eq!(api.prompt["75"]["inputs"]["video"], link("242", 0));
     assert_eq!(
@@ -64,6 +65,7 @@ fn patched_workflow_converts_with_requested_values() {
     assert_eq!(api.prompt["257"]["inputs"]["value"], 768);
     assert_eq!(api.prompt["258"]["inputs"]["value"], 512);
     assert_eq!(api.prompt["75"]["inputs"]["video"], link("242", 0));
+    assert_no_reroute_nodes(&api.prompt);
 }
 
 fn link(node_id: &str, slot: u64) -> Value {
@@ -71,4 +73,14 @@ fn link(node_id: &str, slot: u64) -> Value {
         Value::String(node_id.to_string()),
         Value::Number(slot.into()),
     ])
+}
+
+fn assert_no_reroute_nodes(prompt: &Value) {
+    let prompt = prompt.as_object().expect("api prompt must be an object");
+    for (id, node) in prompt {
+        assert_ne!(
+            node["class_type"], "Reroute",
+            "node {id} must not be executed"
+        );
+    }
 }
