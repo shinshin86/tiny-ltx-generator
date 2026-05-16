@@ -11,6 +11,7 @@ class ModelManager:
         self.emit = emit
         self.pipeline = None
         self.loaded_key = None
+        self.load_warnings = []
 
     def load(self, request_id, model_entry, profile):
         model_key = model_entry.get("id") or model_entry.get("display_name") or "configured_model"
@@ -21,6 +22,9 @@ class ModelManager:
         pipeline_cls = self._find_pipeline(model_key, profile)
         kwargs = self._quantization_kwargs(model_entry)
         offload_mode = self._offload_mode(profile)
+        for warning in self.load_warnings:
+            self.emit(request_id, "log", warning)
+        self.load_warnings = []
         if model_entry.get("config_path") and hasattr(pipeline_cls, "from_config"):
             self.pipeline = self._load_from_config(pipeline_cls, model_entry, kwargs, offload_mode)
         elif pipeline_cls.__name__ == "DistilledPipeline":
@@ -176,7 +180,12 @@ class ModelManager:
         try:
             from ltx_pipelines.utils.types import OffloadMode
         except Exception as exc:
-            raise WorkerError("unsupported_option", f"offload mode requested but OffloadMode is unavailable: {exc}")
+            self.load_warnings.append({
+                "stage": "offload_unavailable",
+                "requested": requested,
+                "reason": f"OffloadMode is unavailable: {exc}",
+            })
+            return None
         try:
             return OffloadMode(requested)
         except ValueError:

@@ -13,7 +13,9 @@ Audio is disabled by default because it increases memory and runtime. Upscaling 
 
 For visual quality checks, prefer a landscape LTX-shaped size such as 768x512 or 1280x720. The square 512x512 path exists for memory fallback and smoke tests, not for judging model quality.
 
-FP8 and distilled models reduce memory by shrinking weights and reducing inference steps. The preferred LTX 2.3 Colab path is the official dev FP8 checkpoint with distilled LoRA, because the standalone distilled FP8 checkpoint has produced noisy output when an additional `fp8-cast` pass is applied. If a quantization mode is not exposed by the installed pipeline, the worker returns a structured error instead of silently continuing.
+FP8 and distilled models reduce memory by shrinking weights and reducing inference steps. The preferred direction is the same lightweight composition that works well in ComfyUI: FP8 video checkpoint, distilled LoRA when needed, and quantized Gemma text encoder. The current `ltx-pipelines` backend can load the FP8 checkpoint and LoRA, but it still uses the package's `gemma_root` loader path rather than ComfyUI's split `gemma_3_12B_it_fp8_scaled.safetensors` or `gemma_3_12B_it_fp4_mixed.safetensors` loaders. Treat that path as transitional until the Comfy-compatible lightweight backend is implemented.
+
+The standalone `ltx2_3_distilled_fp8` checkpoint has produced noisy output when an additional `fp8-cast` pass is applied, so FP8 checkpoints are loaded with `quantization = "none"`. If a quantization mode is not exposed by the installed pipeline, the worker returns a structured error instead of silently continuing.
 
 When CUDA OOM happens, reduce:
 
@@ -29,4 +31,4 @@ Use `--no-auto-downgrade` when you want hard failure instead of profile-based re
 
 If the Python worker returns a structured CUDA OOM error, `generate` and `batch` retry once when auto downgrade is enabled. The retry switches to `colab_tiny`, caps the request to 512x512, 33 frames, 8 fps, and 8 steps, then selects the first configured low-VRAM model from the registry. Every changed field is recorded in the job downgrade list.
 
-For `colab_tiny` and `colab_eco`, the Python worker requests `ltx-pipelines` disk offload when the selected pipeline exposes `OffloadMode`. Override this with `LTX_OFFLOAD_MODE=none`, `cpu`, or `disk` when needed.
+For `colab_tiny` and `colab_eco`, the Python worker requests `ltx-pipelines` disk offload when the selected pipeline exposes `OffloadMode`. Some `ltx-pipelines` builds do not expose that API; in that case the worker records an `offload_unavailable` log event and continues without pretending offload is active. Override this with `LTX_OFFLOAD_MODE=none`, `cpu`, or `disk` when needed.

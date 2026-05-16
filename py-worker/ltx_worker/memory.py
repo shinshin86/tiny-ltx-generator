@@ -1,3 +1,6 @@
+import subprocess
+
+
 def _cuda_module(torch):
     return getattr(torch, "cuda", None)
 
@@ -66,7 +69,40 @@ def memory_stats():
             ),
             "max_reserved_vram_mb": int(cuda.max_memory_reserved(0) / 1024 / 1024),
         })
+    stats.update(_nvidia_smi_memory())
     return stats
+
+
+def _nvidia_smi_memory():
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.used,memory.free,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return {}
+    if result.returncode != 0:
+        return {}
+    first_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+    parts = [part.strip() for part in first_line.split(",")]
+    if len(parts) != 3:
+        return {}
+    try:
+        used, free, total = [int(part) for part in parts]
+    except ValueError:
+        return {}
+    return {
+        "nvidia_smi_used_vram_mb": used,
+        "nvidia_smi_free_vram_mb": free,
+        "nvidia_smi_total_vram_mb": total,
+    }
 
 
 def cleanup_cuda():

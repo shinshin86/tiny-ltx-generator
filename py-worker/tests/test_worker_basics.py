@@ -1,4 +1,5 @@
 from ltx_worker.memory import torch_health, memory_stats
+from ltx_worker.memory import _nvidia_smi_memory
 from ltx_worker.generate import Generator
 from ltx_worker.generate import _image_conditioning_input
 from ltx_worker.model_manager import ModelManager
@@ -22,6 +23,7 @@ def test_memory_stats_no_raise():
 
 def test_memory_stats_handles_torch_without_cuda(monkeypatch):
     monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(__version__="stub"))
+    monkeypatch.setattr("ltx_worker.memory._nvidia_smi_memory", lambda: {})
     stats = memory_stats()
     health = torch_health()
 
@@ -29,6 +31,24 @@ def test_memory_stats_handles_torch_without_cuda(monkeypatch):
     assert health["import_ok"] is True
     assert health["cuda_available"] is False
     assert health["device_count"] == 0
+
+
+def test_nvidia_smi_memory_parses_first_gpu(monkeypatch):
+    completed = types.SimpleNamespace(returncode=0, stdout="123, 456, 579\n", stderr="")
+    monkeypatch.setattr("ltx_worker.memory.subprocess.run", lambda *_args, **_kwargs: completed)
+
+    assert _nvidia_smi_memory() == {
+        "nvidia_smi_used_vram_mb": 123,
+        "nvidia_smi_free_vram_mb": 456,
+        "nvidia_smi_total_vram_mb": 579,
+    }
+
+
+def test_nvidia_smi_memory_ignores_unparseable_output(monkeypatch):
+    completed = types.SimpleNamespace(returncode=0, stdout="not,csv\n", stderr="")
+    monkeypatch.setattr("ltx_worker.memory.subprocess.run", lambda *_args, **_kwargs: completed)
+
+    assert _nvidia_smi_memory() == {}
 
 
 def test_validate_request_accepts_text_to_video():
@@ -148,6 +168,50 @@ def test_model_manager_defaults_low_vram_profiles_to_disk_offload(monkeypatch):
     assert manager._offload_mode("colab_tiny") == "disk"
     assert manager._offload_mode("colab_eco") == "disk"
     assert manager._offload_mode("colab_balanced") is None
+
+
+def test_model_manager_falls_back_when_offload_mode_api_is_missing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils.types", types.ModuleType("ltx_pipelines.utils.types"))
+
+    manager = ModelManager(lambda *_args: None)
+
+    assert manager._offload_mode("colab_tiny") is None
+    assert len(manager.load_warnings) == 1
+    assert manager.load_warnings[0]["stage"] == "offload_unavailable"
+    assert manager.load_warnings[0]["requested"] == "disk"
+    assert "OffloadMode is unavailable" in manager.load_warnings[0]["reason"]
+
+
+def test_model_manager_emits_offload_fallback_warning_during_load(monkeypatch):
+    events = []
+
+    class FakePipeline:
+        def __init__(self, checkpoint_path, gemma_root, loras):
+            self.checkpoint_path = checkpoint_path
+            self.gemma_root = gemma_root
+            self.loras = loras
+
+    monkeypatch.setitem(sys.modules, "ltx_pipelines", types.ModuleType("ltx_pipelines"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils", types.ModuleType("ltx_pipelines.utils"))
+    monkeypatch.setitem(sys.modules, "ltx_pipelines.utils.types", types.ModuleType("ltx_pipelines.utils.types"))
+
+    manager = ModelManager(lambda *args: events.append(args))
+    manager._find_pipeline = lambda *_args: FakePipeline
+    manager.load("req", {
+        "id": "ltx2_3_fp8",
+        "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+        "gemma_root": "/content/models/gemma",
+    }, "colab_tiny")
+
+    assert any(
+        event[1] == "log"
+        and event[2]["stage"] == "offload_unavailable"
+        and event[2]["requested"] == "disk"
+        for event in events
+    )
+    assert manager.load_warnings == []
 
 
 def test_model_manager_prefers_from_config_when_config_path_exists():
