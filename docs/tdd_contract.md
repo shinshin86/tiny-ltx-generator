@@ -22,3 +22,10 @@ The CLI exits 0 only when:
 - The MP4 exists and is readable by ffmpeg.
 - Metadata records the exact template, model files, prompt, seed, dimensions, fps, duration, and downgrades.
 - A basic visual sanity check says the output is not an all-noise/all-flat placeholder.
+
+## Current tests
+
+- Template contract tests reject incomplete LTX-2.3 workflows.
+- Template patcher tests verify that only manifest-declared controls are changed.
+- CLI contract tests verify `validate-template` and `patch-template`.
+- Job artifact tests reject success when `worker_stats.json` or `visual_check.json` is missing or failed.

@@ -12,3 +12,16 @@ The Colab validation flow should be reproducible from notebook cells and from Co
 8. Verify that CLI success matches actual output validity.
 
 The first real generation test must run through the template-driven path, not a handcrafted prompt dictionary.
+
+## Pre-generation checks
+
+Before running the ComfyUI adapter on Colab, run:
+
+```bash
+./target/release/ltx-runner validate-template \
+  --workflow /content/tiny-ltx-generator/fixtures/ltx23_comfy_template_minimal.json \
+  --manifest /content/tiny-ltx-generator/fixtures/ltx23_template_manifest.example.json \
+  --json
+```
+
+The real workflow fixture will replace the minimal test fixture once it is checked in. The manifest must be updated alongside it, and tests must fail if the node ids or widget indexes drift.

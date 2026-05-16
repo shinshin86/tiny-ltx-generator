@@ -1,0 +1,21 @@
+{
+  "controls": {
+    "prompt": {"node_id": 266, "node_type": "PrimitiveStringMultiline", "widget_index": 0},
+    "positive_prompt": {"node_id": 240, "node_type": "CLIPTextEncode", "widget_index": 0},
+    "negative_prompt": {"node_id": 247, "node_type": "CLIPTextEncode", "widget_index": 0},
+    "width": {"node_id": 257, "node_type": "PrimitiveInt", "widget_index": 0},
+    "height": {"node_id": 258, "node_type": "PrimitiveInt", "widget_index": 0},
+    "duration_seconds": {"node_id": 225, "node_type": "PrimitiveInt", "widget_index": 0},
+    "fps": {"node_id": 260, "node_type": "PrimitiveInt", "widget_index": 0},
+    "checkpoint": {"node_id": 236, "node_type": "CheckpointLoaderSimple", "widget_index": 0},
+    "text_encoder": {"node_id": 243, "node_type": "LTXAVTextEncoderLoader", "widget_index": 0},
+    "text_encoder_checkpoint": {"node_id": 243, "node_type": "LTXAVTextEncoderLoader", "widget_index": 1},
+    "distilled_lora": {"node_id": 232, "node_type": "LoraLoaderModelOnly", "widget_index": 0},
+    "lora_strength": {"node_id": 232, "node_type": "LoraLoaderModelOnly", "widget_index": 1},
+    "spatial_upscaler": {"node_id": 233, "node_type": "LatentUpscaleModelLoader", "widget_index": 0},
+    "first_stage_seed": {"node_id": 237, "node_type": "RandomNoise", "widget_index": 0},
+    "first_stage_seed_mode": {"node_id": 237, "node_type": "RandomNoise", "widget_index": 1},
+    "second_stage_seed": {"node_id": 216, "node_type": "RandomNoise", "widget_index": 0},
+    "second_stage_seed_mode": {"node_id": 216, "node_type": "RandomNoise", "widget_index": 1}
+  }
+}
