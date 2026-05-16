@@ -27,4 +27,8 @@ fn adapter_supports_dry_run_before_colab_execution_is_enabled() {
     assert!(script.contains("worker_stats.json"));
     assert!(script.contains("os.chdir(comfy_root)"));
     assert!(script.contains("utils.install_util"));
+    assert!(
+        script.find("utils.install_util").unwrap() < script.find("import execution").unwrap(),
+        "ComfyUI utils package must be loaded before execution can poison sys.modules"
+    );
 }

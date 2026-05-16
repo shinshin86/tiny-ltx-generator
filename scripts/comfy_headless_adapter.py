@@ -97,11 +97,12 @@ def run_comfy(request: dict, api_prompt_path: Path) -> int:
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
     import importlib
+    importlib.import_module("utils.install_util")
+
     import execution
     import folder_paths
     import nodes
 
-    importlib.import_module("utils.install_util")
     folder_paths.set_output_directory(str(output_path.parent))
     asyncio.run(nodes.init_extra_nodes(init_custom_nodes=True, init_api_nodes=False))
 
