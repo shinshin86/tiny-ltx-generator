@@ -2,6 +2,7 @@
 members = [
   "crates/ltx-core",
   "crates/ltx-runner",
+  "crates/ltx-onnx",
 ]
 resolver = "2"
 

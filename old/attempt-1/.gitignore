@@ -1,0 +1,8 @@
+/target/
+/py-worker/.venv/
+/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+/configs/model_registry.toml
+/tmp/

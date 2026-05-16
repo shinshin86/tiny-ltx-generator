@@ -1,0 +1,6 @@
+{
+  "checkpoint": "ltx-2.3-22b-dev-fp8.safetensors",
+  "text_encoder": "gemma_3_12B_it_fp4_mixed.safetensors",
+  "distilled_lora": "ltx-2.3-22b-distilled-lora-384.safetensors",
+  "spatial_upscaler": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+}

@@ -1,0 +1,38 @@
+{
+  "definitions": {
+    "subgraphs": [
+      {
+        "name": "Text to Video (LTX-2.3)",
+        "nodes": [
+          {"id": 236, "type": "CheckpointLoaderSimple"},
+          {"id": 243, "type": "LTXAVTextEncoderLoader"},
+          {"id": 240, "type": "CLIPTextEncode"},
+          {"id": 247, "type": "CLIPTextEncode"},
+          {"id": 239, "type": "LTXVConditioning"},
+          {"id": 228, "type": "EmptyLTXVLatentVideo"},
+          {"id": 221, "type": "LTXVAudioVAELoader"},
+          {"id": 214, "type": "LTXVEmptyLatentAudio"},
+          {"id": 222, "type": "LTXVConcatAVLatent"},
+          {"id": 232, "type": "LoraLoaderModelOnly"},
+          {"id": 252, "type": "ManualSigmas"},
+          {"id": 211, "type": "ManualSigmas"},
+          {"id": 209, "type": "KSamplerSelect"},
+          {"id": 246, "type": "KSamplerSelect"},
+          {"id": 231, "type": "CFGGuider"},
+          {"id": 213, "type": "CFGGuider"},
+          {"id": 215, "type": "SamplerCustomAdvanced"},
+          {"id": 219, "type": "SamplerCustomAdvanced"},
+          {"id": 217, "type": "LTXVSeparateAVLatent"},
+          {"id": 218, "type": "LTXVSeparateAVLatent"},
+          {"id": 212, "type": "LTXVCropGuides"},
+          {"id": 233, "type": "LatentUpscaleModelLoader"},
+          {"id": 253, "type": "LTXVLatentUpsampler"},
+          {"id": 251, "type": "VAEDecodeTiled"},
+          {"id": 220, "type": "LTXVAudioVAEDecode"},
+          {"id": 242, "type": "CreateVideo"},
+          {"id": 75, "type": "SaveVideo"}
+        ]
+      }
+    ]
+  }
+}

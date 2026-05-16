@@ -1,8 +1,8 @@
 /target/
-/py-worker/.venv/
-/.venv/
-__pycache__/
-*.py[cod]
+**/__pycache__/
+*.pyc
+.venv/
 .pytest_cache/
-/configs/model_registry.toml
 /tmp/
+/outputs/
+/models/
