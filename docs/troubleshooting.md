@@ -12,7 +12,7 @@ Exit code `4` means CUDA GPU generation is unavailable. `ltx-runner check --json
 
 Exit code `5` means the worker caught a CUDA out-of-memory error. Use `colab_tiny`, fewer frames, smaller resolution, and the dev FP8 plus distilled LoRA default when available.
 
-If A100 still OOMs with `ltx2_3_dev_fp8_distilled_lora`, the current backend is not yet matching the lightweight ComfyUI runtime. ComfyUI commonly uses split quantized text encoders such as `gemma_3_12B_it_fp8_scaled.safetensors` or `gemma_3_12B_it_fp4_mixed.safetensors`; the `ltx-pipelines` backend currently loads through `gemma_root` instead. Do not treat that failure as a bad prompt or bad resolution by itself.
+If A100 still OOMs with `ltx2_3_dev_fp8_distilled_lora`, first confirm the registry contains `extra = { backend = "comfy_ltx" }` and `text_encoder_path` points to a split quantized Gemma safetensors file such as `gemma_3_12B_it_fp4_mixed.safetensors`. If the worker falls back to `ltx-pipelines`, that is not the intended lightweight path.
 
 ## Valid MP4 But Noise Or Static
 
@@ -33,7 +33,7 @@ A valid `output.mp4` only proves encoding succeeded. If the video looks like noi
 
 Common causes are a wrong model/pipeline pairing, an experimental community checkpoint, applying extra FP8 casting to a checkpoint that is already FP8-mixed, too few steps for a full/dev model, using a checkpoint that expects a LoRA workflow without applying that LoRA, or using the 512x512 low-memory fallback as a quality check. For full/dev models, start around `--steps 40`; distilled models can use fewer steps. Sulphur variants must be selected explicitly and visually validated before batch use.
 
-For ComfyUI-like LTX 2.3 runs, verify that the model set includes the FP8 checkpoint, distilled LoRA, spatial upscaler, and a quantized split Gemma text encoder. The current CLI registry can record `text_encoder_path`, but the `ltx-pipelines` backend does not consume that field yet.
+For ComfyUI-like LTX 2.3 runs, verify that the model set includes the FP8 checkpoint, distilled LoRA, spatial upscaler, and a quantized split Gemma text encoder. The default Comfy-compatible backend consumes `text_encoder_path`; missing or empty values fail early instead of pretending generation succeeded.
 
 ## Unsupported Pipeline
 

@@ -61,11 +61,21 @@ fn model_registry_quantization_flags_are_consistent() {
         .as_deref()
         .unwrap_or("")
         .contains("distilled-lora"));
+    assert_eq!(
+        comfy_style.extra.get("backend").map(String::as_str),
+        Some("comfy_ltx")
+    );
+    assert!(comfy_style
+        .text_encoder_path
+        .as_deref()
+        .unwrap_or("")
+        .contains("gemma_3_12B_it_fp4_mixed"));
 }
 
 #[test]
 fn colab_download_scripts_track_default_low_vram_variant() {
     let download_script = fs::read_to_string("../../scripts/download_models_colab.sh").unwrap();
+    let bootstrap_script = fs::read_to_string("../../scripts/bootstrap_colab.sh").unwrap();
     let registry_writer =
         fs::read_to_string("../../scripts/write_downloaded_model_registry.py").unwrap();
     let example_registry = fs::read_to_string("../../configs/model_registry.example.toml").unwrap();
@@ -74,13 +84,19 @@ fn colab_download_scripts_track_default_low_vram_variant() {
         .contains("VARIANT=\"${LTX_DOWNLOAD_VARIANT:-ltx2_3_dev_fp8_distilled_lora}\""));
     assert!(download_script.contains("ltx-2.3-22b-dev-fp8.safetensors"));
     assert!(download_script.contains("ltx-2.3-22b-distilled-lora-384.safetensors"));
+    assert!(download_script.contains("gemma_3_12B_it_fp4_mixed.safetensors"));
+    assert!(bootstrap_script.contains("scripts/setup_comfy_ltx_colab.sh"));
     assert!(download_script.contains("ltx-2.3-22b-distilled.safetensors"));
     assert!(download_script.contains("sulphur_2_dev_fp8mixed"));
     assert!(registry_writer.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(registry_writer.contains("gemma_3_12B_it_fp4_mixed.safetensors"));
+    assert!(registry_writer.contains("backend = \"comfy_ltx\""));
     assert!(registry_writer.contains("sulphur_dev_fp8mixed.safetensors"));
     assert!(registry_writer.contains("spatial_path=\"\""));
     assert!(registry_writer.contains("dev FP8 checkpoint plus distilled LoRA"));
     assert!(example_registry.contains("ltx-2.3-22b-distilled.safetensors"));
+    assert!(example_registry.contains("gemma_3_12B_it_fp4_mixed.safetensors"));
+    assert!(example_registry.contains("backend = \"comfy_ltx\""));
     assert!(example_registry.contains("sulphur_dev_fp8mixed.safetensors"));
     assert!(example_registry.contains("dev FP8 checkpoint plus distilled LoRA"));
 

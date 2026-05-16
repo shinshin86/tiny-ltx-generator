@@ -3,6 +3,8 @@ from ltx_worker.memory import _nvidia_smi_memory
 from ltx_worker.generate import Generator
 from ltx_worker.generate import _image_conditioning_input
 from ltx_worker.model_manager import ModelManager
+from ltx_worker.profiles import preferred_pipeline_names
+from ltx_worker.comfy_backend import ComfyLtxPipeline
 from ltx_worker.output import persist_result
 from ltx_worker.validators import validate_request
 from ltx_worker.errors import WorkerError
@@ -74,6 +76,69 @@ def test_validate_request_rejects_bad_frames():
         assert exc.code == "validation_error"
     else:
         raise AssertionError("bad frame count should fail")
+
+
+def test_default_ltx23_lora_does_not_prefer_two_stage_pipeline():
+    names = preferred_pipeline_names("ltx2_3_dev_fp8_distilled_lora", "colab_tiny")
+
+    assert ("ltx_pipelines.ti2vid_two_stages", "TI2VidTwoStagesPipeline") not in names
+    assert names[0] == ("ltx_pipelines.ti2vid_one_stage", "TI2VidOneStagePipeline")
+
+
+def test_model_manager_routes_comfy_backend_without_ltx_pipeline_import(monkeypatch):
+    calls = []
+
+    class FakeComfyPipeline:
+        def __init__(self, model_entry, profile, emit):
+            calls.append((model_entry, profile, emit))
+
+    monkeypatch.setattr("ltx_worker.model_manager.ComfyLtxPipeline", FakeComfyPipeline)
+    manager = ModelManager(lambda *_args: None)
+    manager.load(
+        "request-1",
+        {
+            "id": "ltx2_3_dev_fp8_distilled_lora",
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "text_encoder_path": "/content/models/gemma_3_12B_it_fp4_mixed.safetensors",
+            "extra": {"backend": "comfy_ltx"},
+        },
+        "colab_tiny",
+    )
+
+    assert calls[0][1] == "colab_tiny"
+    assert manager.loaded_key == ("ltx2_3_dev_fp8_distilled_lora", "colab_tiny")
+    assert isinstance(manager.pipeline, FakeComfyPipeline)
+
+
+def test_comfy_backend_requires_split_text_encoder_path():
+    pipeline = ComfyLtxPipeline({"extra": {"backend": "comfy_ltx"}}, "colab_tiny")
+
+    try:
+        pipeline._comfy_model_paths()
+    except WorkerError as exc:
+        assert exc.code == "missing_model_files"
+        assert "text_encoder_path" in exc.message
+    else:
+        raise AssertionError("Comfy backend must require text_encoder_path")
+
+
+def test_comfy_backend_rejects_i2v_until_implemented():
+    pipeline = ComfyLtxPipeline(
+        {
+            "checkpoint_path": "/content/models/model.safetensors",
+            "text_encoder_path": "/content/models/gemma_3_12B_it_fp4_mixed.safetensors",
+            "extra": {"backend": "comfy_ltx"},
+        },
+        "colab_tiny",
+    )
+
+    try:
+        pipeline(mode="image-to-video")
+    except WorkerError as exc:
+        assert exc.code == "unsupported_pipeline"
+        assert "image-to-video" in exc.message
+    else:
+        raise AssertionError("Comfy backend must not silently ignore image-to-video input")
 
 
 def test_model_manager_rejects_unsupported_registry_quantization():

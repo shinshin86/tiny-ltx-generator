@@ -37,6 +37,13 @@ class Generator:
             "num_frames": request["frames"],
             "seed": request["seed"],
         }
+        if getattr(self.models.pipeline, "uses_comfy_backend", False):
+            kwargs.update({
+                "mode": request.get("mode"),
+                "input_image": request.get("input_image"),
+                "output_path": request["output_path"],
+                "fps": float(request["fps"]),
+            })
         call_signature = inspect.signature(self.models.pipeline.__call__)
         if "fps" in call_signature.parameters:
             kwargs["fps"] = float(request["fps"])

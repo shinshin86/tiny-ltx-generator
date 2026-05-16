@@ -2,7 +2,7 @@
 
 `tiny-ltx-generator` is a Colab-first local video generation CLI for LTX models, centered on LTX 2.3.
 
-It is not ComfyUI, not a web UI, not a public API server, and does not implement MCP. The runtime interface is only the `ltx-runner` CLI, designed to run from Google Colab notebook cells or shell commands.
+It is not a web UI, not a public API server, and does not implement MCP. The runtime interface is only the `ltx-runner` CLI, designed to run from Google Colab notebook cells or shell commands.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ It is not ComfyUI, not a web UI, not a public API server, and does not implement
 notebook cell
   -> ltx-runner Rust CLI
   -> Python JSONL worker
-  -> official Lightricks ltx-pipelines
+  -> headless ComfyUI-compatible LTX backend or ltx-pipelines fallback
   -> /content/outputs/jobs/{job_id}/
 ```
 
@@ -25,9 +25,9 @@ cd /content/tiny-ltx-generator
 bash scripts/bootstrap_colab.sh --download-models
 ```
 
-The bootstrap script installs Rust, `uv`, and `ffmpeg` only when missing, builds `ltx-runner`, prepares `/content/outputs`, `/content/ltx_tmp`, and `/content/models`, then runs `ltx-runner check`.
+The bootstrap script installs Rust, `uv`, and `ffmpeg` only when missing, prepares a headless ComfyUI-compatible LTX runtime, builds `ltx-runner`, prepares `/content/outputs`, `/content/ltx_tmp`, and `/content/models`, then runs `ltx-runner check`.
 
-Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora`, which downloads the official LTX 2.3 dev FP8 checkpoint, distilled LoRA, spatial upscaler, and Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
+Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora`, which downloads the official LTX 2.3 dev FP8 checkpoint, distilled LoRA, spatial upscaler, and split quantized Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
 
 Other supported setup variants:
 
@@ -41,7 +41,7 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
 
 Set `HF_TOKEN` when Hugging Face access requires authentication.
 
-The default LTX 2.3 path mirrors the lightweight ComfyUI-style setup without importing ComfyUI: official dev FP8 checkpoint plus distilled LoRA. The standalone `ltx2_3_distilled_fp8` checkpoint remains configurable, but it is not the preferred default because it has produced invalid/noisy output with an extra `fp8-cast` pass.
+The default LTX 2.3 path now uses a headless ComfyUI-compatible backend: official dev FP8 checkpoint, distilled LoRA, split quantized Gemma text encoder, and the same ComfyUI LTX node family, without starting a browser UI or public service. The standalone `ltx2_3_distilled_fp8` checkpoint remains configurable, but it is not the preferred default because it has produced invalid/noisy output with the previous `ltx-pipelines` path.
 
 Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are experimental in this project, are not selected by `--model auto`, and should be visually validated before batch use. The Sulphur FP8-mixed checkpoint is loaded without an additional `fp8-cast` pass until that path is verified.
 
@@ -54,7 +54,7 @@ cp -n configs/model_registry.example.toml configs/model_registry.toml
 nano configs/model_registry.toml
 ```
 
-Set the exact local paths for checkpoint/config files. Missing model paths fail with exit code `3`; the tool does not pretend generation succeeded.
+Set the exact local paths for checkpoint/config files. For the default Comfy-compatible backend, `text_encoder_path` must point to a split Gemma safetensors file and `extra = { backend = "comfy_ltx" }` must be present. Missing model paths fail with exit code `3`; the tool does not pretend generation succeeded.
 
 ## Check Runtime
 

@@ -2,9 +2,11 @@
 set -euo pipefail
 
 DOWNLOAD_MODELS=0
+INSTALL_COMFY=1
 for arg in "$@"; do
   case "$arg" in
     --download-models) DOWNLOAD_MODELS=1 ;;
+    --skip-comfy) INSTALL_COMFY=0 ;;
   esac
 done
 
@@ -32,6 +34,9 @@ cp -n configs/colab_engine.example.toml configs/colab_engine.toml || true
 cp -n configs/model_registry.example.toml configs/model_registry.toml || true
 
 uv sync --project py-worker
+if [[ "$INSTALL_COMFY" == "1" ]]; then
+  bash scripts/setup_comfy_ltx_colab.sh
+fi
 cargo build --release -p ltx-runner
 
 if [[ "$DOWNLOAD_MODELS" == "1" ]]; then

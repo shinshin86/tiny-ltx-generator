@@ -13,7 +13,7 @@ Audio is disabled by default because it increases memory and runtime. Upscaling 
 
 For visual quality checks, prefer a landscape LTX-shaped size such as 768x512 or 1280x720. The square 512x512 path exists for memory fallback and smoke tests, not for judging model quality.
 
-FP8 and distilled models reduce memory by shrinking weights and reducing inference steps. The preferred direction is the same lightweight composition that works well in ComfyUI: FP8 video checkpoint, distilled LoRA when needed, and quantized Gemma text encoder. The current `ltx-pipelines` backend can load the FP8 checkpoint and LoRA, but it still uses the package's `gemma_root` loader path rather than ComfyUI's split `gemma_3_12B_it_fp8_scaled.safetensors` or `gemma_3_12B_it_fp4_mixed.safetensors` loaders. Treat that path as transitional until the Comfy-compatible lightweight backend is implemented.
+FP8 and distilled models reduce memory by shrinking weights and reducing inference steps. The preferred path is the same lightweight composition that works well in ComfyUI: FP8 video checkpoint, distilled LoRA when needed, and a quantized split Gemma text encoder such as `gemma_3_12B_it_fp4_mixed.safetensors`. The default `ltx2_3_dev_fp8_distilled_lora` registry entry now routes through the headless Comfy-compatible backend instead of `TI2VidTwoStagesPipeline`.
 
 The standalone `ltx2_3_distilled_fp8` checkpoint has produced noisy output when an additional `fp8-cast` pass is applied, so FP8 checkpoints are loaded with `quantization = "none"`. If a quantization mode is not exposed by the installed pipeline, the worker returns a structured error instead of silently continuing.
 

@@ -15,10 +15,10 @@ Rust responsibilities:
 
 Python responsibilities:
 
-- lazy import of torch and `ltx-pipelines`
-- model loading
+- lazy import of torch, headless ComfyUI-compatible LTX code, and `ltx-pipelines` fallback code
+- model/backend loading
 - text-to-video and image-to-video generation
 - memory stats
 - structured CUDA OOM and unsupported-pipeline errors
 
-No server, web framework, ComfyUI import, node graph, workflow JSON, tunnel, Docker, or MCP interface is included.
+No browser UI, public API server, tunnel, Docker, or MCP interface is included. The default LTX 2.3 low-memory path may use ComfyUI internals headlessly inside the worker because that is the practical route for matching the lightweight Colab behavior.

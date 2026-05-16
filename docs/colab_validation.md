@@ -32,6 +32,7 @@ bash scripts/bootstrap_colab.sh
 Expected:
 
 - `cargo build --release -p ltx-runner` succeeds
+- headless ComfyUI-compatible LTX backend is prepared under `/content/ComfyUI`
 - `ltx-runner check` prints GPU, torch, ffmpeg, and profile information
 
 ## Cell 3: Run Unit And Worker Tests
@@ -74,11 +75,11 @@ LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora bash scripts/bootstrap_colab.
   --profile colab_tiny \
   --model auto \
   --mode text-to-video \
-  --prompt "a small white dog walking through Tokyo at night, realistic, soft lighting" \
-  --width 512 \
+  --prompt "a small cat walking through a sunlit room, realistic, soft lighting" \
+  --width 768 \
   --height 512 \
-  --frames 33 \
-  --fps 8 \
+  --frames 49 \
+  --fps 12 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
@@ -86,8 +87,10 @@ LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora bash scripts/bootstrap_colab.
 Expected:
 
 - `configs/model_registry.toml` contains downloaded `/content/models` paths
+- the selected model has `extra = { backend = "comfy_ltx" }` and a non-empty `text_encoder_path`
 - `output.mp4`, `metadata.json`, `resolved_request.json`, `events.jsonl`, `worker_stats.json`, and `prompt.txt` are written
 - `metadata.json` records the selected model, profile, seed, and any downgrades
+- the MP4 is visually inspected from a contact sheet or notebook video display and is not accepted if it is only noise
 
 ## Cell 6: Real Batch Smoke
 

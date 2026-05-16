@@ -35,7 +35,7 @@ The default path is to download models into `/content/models` on each setup:
 LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora bash scripts/bootstrap_colab.sh --download-models
 ```
 
-This keeps Drive optional. The default downloads the official dev FP8 checkpoint plus distilled LoRA, matching the lightweight LTX 2.3 setup used by current ComfyUI workflows without importing ComfyUI. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
+This keeps Drive optional. The default downloads the official dev FP8 checkpoint, distilled LoRA, spatial upscaler, and split quantized Gemma text encoder, matching the lightweight LTX 2.3 setup used by current ComfyUI workflows through a headless backend. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
 
 To try the experimental Sulphur 2 LTX 2.3-derived model explicitly:
 

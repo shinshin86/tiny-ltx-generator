@@ -42,10 +42,10 @@ notes = "FP8 dev checkpoint. Load without an additional fp8-cast pass."
 display_name = "LTX 2.3 dev FP8 + distilled LoRA"
 checkpoint_path = "/content/models/ltx-2.3-22b-dev-fp8.safetensors"
 config_path = ""
-gemma_root = "/content/models/gemma-3-12b-it-qat-q4_0-unquantized"
-text_encoder_path = ""
+gemma_root = ""
+text_encoder_path = "/content/models/gemma_3_12B_it_fp4_mixed.safetensors"
 vae_path = ""
-spatial_upsampler_path = "/content/models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+spatial_upsampler_path = "/content/models/ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
 temporal_upsampler_path = ""
 lora_path = "/content/models/ltx-2.3-22b-distilled-lora-384.safetensors"
 lora_strength = 1.0
@@ -57,6 +57,7 @@ supports_fp8_scaled_mm = false
 quantization = "none"
 preferred_profiles = ["colab_tiny", "colab_eco", "colab_balanced", "colab_quality"]
 notes = "ComfyUI-style setup: official dev FP8 checkpoint plus distilled LoRA. Preferred Colab default; load without an additional fp8-cast pass."
+extra = { backend = "comfy_ltx" }
 
 [models.ltx2_3_distilled_fp8]
 display_name = "LTX 2.3 distilled FP8"

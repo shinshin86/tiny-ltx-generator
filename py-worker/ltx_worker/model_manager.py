@@ -4,6 +4,7 @@ import os
 from .errors import WorkerError
 from .memory import cleanup_cuda, memory_stats
 from .profiles import preferred_pipeline_names
+from .comfy_backend import ComfyLtxPipeline, is_comfy_backend
 
 
 class ModelManager:
@@ -19,6 +20,11 @@ class ModelManager:
             return
         self.unload()
         self.emit(request_id, "progress", {"stage": "before_load", "memory": memory_stats()})
+        if is_comfy_backend(model_entry):
+            self.pipeline = ComfyLtxPipeline(model_entry, profile, self.emit)
+            self.loaded_key = (model_key, profile)
+            self.emit(request_id, "progress", {"stage": "after_load", "backend": "comfy_ltx", "memory": memory_stats()})
+            return
         pipeline_cls = self._find_pipeline(model_key, profile)
         kwargs = self._quantization_kwargs(model_entry)
         offload_mode = self._offload_mode(profile)
