@@ -164,6 +164,7 @@ fn prepare_run_writes_adapter_request_and_required_job_inputs() {
     assert_eq!(summary["job_id"], "cat-smoke-001");
     assert_eq!(summary["status"], "prepared");
     assert!(job_dir.join("patched_workflow.json").exists());
+    assert!(job_dir.join("api_prompt.json").exists());
     assert!(job_dir.join("adapter_request.json").exists());
     assert!(job_dir.join("resolved_request.json").exists());
     assert!(job_dir.join("metadata.json").exists());
@@ -179,6 +180,11 @@ fn prepare_run_writes_adapter_request_and_required_job_inputs() {
     assert_eq!(adapter["backend"], "comfyui_headless");
     assert_eq!(adapter["comfy_root"], "/content/ComfyUI");
     assert_eq!(
+        adapter["api_prompt_path"].as_str().unwrap(),
+        job_dir.join("api_prompt.json").to_string_lossy()
+    );
+    assert_eq!(adapter["output_node_ids"][0], "75");
+    assert_eq!(
         adapter["output_path"].as_str().unwrap(),
         job_dir.join("output.mp4").to_string_lossy()
     );
@@ -193,6 +199,15 @@ fn prepare_run_writes_adapter_request_and_required_job_inputs() {
     assert_eq!(
         widget(&patched, 266, 0),
         &Value::String("a cat walking".to_string())
+    );
+
+    let api_prompt: Value =
+        serde_json::from_str(&fs::read_to_string(job_dir.join("api_prompt.json")).unwrap())
+            .unwrap();
+    assert_eq!(api_prompt["75"]["class_type"], "SaveVideo");
+    assert_eq!(
+        api_prompt["75"]["inputs"]["video"],
+        Value::Array(vec![Value::String("242".to_string()), Value::from(0)])
     );
 }
 

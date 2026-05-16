@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use ltx_core::comfy_api::workflow_value_to_api_prompt;
 use ltx_core::job_artifacts::REQUIRED_SUCCESS_FILES;
 use ltx_core::reset_plan::restart_plan;
 use ltx_core::template_patcher::{apply_template_patch, TemplatePatchRequest};
@@ -152,14 +153,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 spatial_upscaler: args.patch.spatial_upscaler,
             };
             let patched = apply_template_patch(&workflow_raw, &manifest_raw, &request)?;
+            let api_prompt = workflow_value_to_api_prompt(&patched.workflow)?;
             let job_dir = args.out_dir.join("jobs").join(&args.job_id);
             fs::create_dir_all(&job_dir)?;
 
             let patched_workflow_path = job_dir.join("patched_workflow.json");
+            let api_prompt_path = job_dir.join("api_prompt.json");
             let output_path = job_dir.join("output.mp4");
             fs::write(
                 &patched_workflow_path,
                 serde_json::to_string_pretty(&patched.workflow)?,
+            )?;
+            fs::write(
+                &api_prompt_path,
+                serde_json::to_string_pretty(&api_prompt.prompt)?,
             )?;
             fs::write(job_dir.join("prompt.txt"), format!("{}\n", request.prompt))?;
             fs::write(
@@ -198,6 +205,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     "comfy_root": args.comfy_root,
                     "job_dir": job_dir,
                     "workflow_path": patched_workflow_path,
+                    "api_prompt_path": api_prompt_path,
+                    "output_node_ids": api_prompt.output_node_ids,
                     "output_path": output_path,
                     "required_success_files": REQUIRED_SUCCESS_FILES,
                 }))?,

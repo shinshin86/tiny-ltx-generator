@@ -8,8 +8,13 @@ ComfyUI and its LTX custom nodes are installed.
 """
 
 import argparse
+import asyncio
+import gc
 import json
+import os
+import shutil
 import sys
+import time
 from pathlib import Path
 
 
@@ -19,9 +24,22 @@ REQUIRED_REQUEST_FIELDS = {
     "comfy_root",
     "job_dir",
     "workflow_path",
+    "api_prompt_path",
+    "output_node_ids",
     "output_path",
     "required_success_files",
 }
+
+
+class _Server:
+    client_id = None
+    last_node_id = None
+
+    def send_sync(self, *_args, **_kwargs):
+        return None
+
+    def queue_updated(self):
+        return None
 
 
 def main() -> int:
@@ -44,22 +62,109 @@ def main() -> int:
     if not workflow_path.exists():
         print(json.dumps({"status": "error", "code": "missing_workflow", "path": str(workflow_path)}))
         return 2
+    api_prompt_path = Path(request["api_prompt_path"])
+    if not api_prompt_path.exists():
+        print(json.dumps({"status": "error", "code": "missing_api_prompt", "path": str(api_prompt_path)}))
+        return 2
 
     if args.dry_run:
         print(json.dumps({
             "status": "ok",
             "mode": "dry_run",
             "workflow_path": str(workflow_path),
+            "api_prompt_path": str(api_prompt_path),
+            "output_node_ids": request["output_node_ids"],
             "output_path": request["output_path"],
         }))
         return 0
 
-    print(json.dumps({
-        "status": "error",
-        "code": "not_implemented",
-        "message": "ComfyUI execution must be enabled and tested on Colab.",
-    }))
-    return 8
+    try:
+        return run_comfy(request, api_prompt_path)
+    except Exception as exc:
+        print(json.dumps({"status": "error", "code": "adapter_error", "message": str(exc)}))
+        return 6
+
+
+def run_comfy(request: dict, api_prompt_path: Path) -> int:
+    comfy_root = Path(request["comfy_root"])
+    output_path = Path(request["output_path"])
+    job_dir = Path(request["job_dir"])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    sys.path.insert(0, str(comfy_root))
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+    import execution
+    import folder_paths
+    import nodes
+
+    folder_paths.set_output_directory(str(output_path.parent))
+    asyncio.run(nodes.init_extra_nodes(init_custom_nodes=True, init_api_nodes=False))
+
+    api_prompt = json.loads(api_prompt_path.read_text())
+    prompt_id = f"tiny-ltx-{int(time.time() * 1000)}"
+    executor = execution.PromptExecutor(_Server(), cache_args={"ram": 0})
+    executor.execute(
+        api_prompt,
+        prompt_id,
+        extra_data={"client_id": prompt_id},
+        execute_outputs=[str(node_id) for node_id in request["output_node_ids"]],
+    )
+    if not executor.success:
+        (job_dir / "worker_stats.json").write_text(json.dumps({
+            "success": False,
+            "events": getattr(executor, "status_messages", [])[-20:],
+        }, indent=2))
+        print(json.dumps({
+            "status": "error",
+            "code": "comfy_execution_error",
+            "details": getattr(executor, "history_result", {}),
+            "events": getattr(executor, "status_messages", [])[-10:],
+        }))
+        return 6
+
+    produced = find_latest_video(output_path.parent)
+    if produced is None:
+        print(json.dumps({"status": "error", "code": "missing_output"}))
+        return 6
+    if not same_file(produced, output_path):
+        shutil.copyfile(produced, output_path)
+
+    visual = visual_check(output_path)
+    (job_dir / "visual_check.json").write_text(json.dumps(visual, indent=2))
+    (job_dir / "worker_stats.json").write_text(json.dumps({
+        "success": True,
+        "output_path": str(output_path),
+        "produced_path": str(produced),
+    }, indent=2))
+    gc.collect()
+    print(json.dumps({"status": "ok", "output_path": str(output_path), "visual_check": visual}))
+    return 0 if visual["status"] == "pass" else 6
+
+
+def find_latest_video(output_dir: Path) -> Path | None:
+    candidates = []
+    for pattern in ("*.mp4", "*.webm", "*.mov", "**/*.mp4", "**/*.webm", "**/*.mov"):
+        candidates.extend(output_dir.glob(pattern))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def same_file(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve() or os.path.samefile(left, right)
+    except OSError:
+        return False
+
+
+def visual_check(output_path: Path) -> dict:
+    if not output_path.exists():
+        return {"status": "fail", "reason": "missing_output"}
+    if output_path.stat().st_size <= 0:
+        return {"status": "fail", "reason": "empty_output"}
+    return {"status": "pass", "reason": "non_empty_video_file"}
 
 
 if __name__ == "__main__":
