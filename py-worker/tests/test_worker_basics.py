@@ -122,6 +122,41 @@ def test_comfy_backend_requires_split_text_encoder_path():
         raise AssertionError("Comfy backend must require text_encoder_path")
 
 
+def test_comfy_backend_path_check_ignores_non_path_model_options(tmp_path):
+    comfy_root = tmp_path / "ComfyUI"
+    comfy_root.mkdir()
+    runner = tmp_path / "runner.py"
+    runner.write_text("print('unused')\n")
+    checkpoint = tmp_path / "checkpoint.safetensors"
+    checkpoint.write_text("checkpoint")
+    text_encoder = tmp_path / "text_encoder.safetensors"
+    text_encoder.write_text("text")
+
+    pipeline = ComfyLtxPipeline(
+        {
+            "checkpoint_path": str(checkpoint),
+            "text_encoder_path": str(text_encoder),
+            "lora_strength": 0.5,
+            "extra": {
+                "backend": "comfy_ltx",
+                "comfy_root": str(comfy_root),
+                "comfy_runner": str(runner),
+            },
+        },
+        "colab_tiny",
+    )
+
+    pipeline._ensure_ready({
+        "model": {
+            "checkpoint_path": str(checkpoint),
+            "text_encoder_path": str(text_encoder),
+            "lora_path": "",
+            "spatial_upsampler_path": "",
+            "lora_strength": 0.5,
+        }
+    })
+
+
 def test_comfy_backend_rejects_i2v_until_implemented():
     pipeline = ComfyLtxPipeline(
         {

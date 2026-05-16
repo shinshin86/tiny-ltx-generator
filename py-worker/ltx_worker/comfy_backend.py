@@ -95,7 +95,8 @@ class ComfyLtxPipeline:
             missing.append(f"LTX_COMFYUI_ROOT={self.comfy_root}")
         if not self.runner.exists():
             missing.append(f"comfy runner={self.runner}")
-        for key, path in payload["model"].items():
+        for key in ("checkpoint_path", "lora_path", "text_encoder_path", "spatial_upsampler_path"):
+            path = payload["model"].get(key)
             if path and not Path(path).exists():
                 missing.append(f"{key}={path}")
         if missing:
