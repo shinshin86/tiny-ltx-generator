@@ -19,9 +19,9 @@ Before running the ComfyUI adapter on Colab, run:
 
 ```bash
 ./target/release/ltx-runner validate-template \
-  --workflow /content/tiny-ltx-generator/fixtures/ltx23_comfy_template_minimal.json \
+  --workflow /content/tiny-ltx-generator/fixtures/ltx23_comfy_template.json \
   --manifest /content/tiny-ltx-generator/fixtures/ltx23_template_manifest.example.json \
   --json
 ```
 
-The real workflow fixture will replace the minimal test fixture once it is checked in. The manifest must be updated alongside it, and tests must fail if the node ids or widget indexes drift.
+The checked-in canonical workflow fixture is the actual ComfyUI LTX-2.3 template. The manifest must be updated alongside it, and tests must fail if the node ids or widget indexes drift.

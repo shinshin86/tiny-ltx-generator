@@ -26,6 +26,7 @@ The CLI exits 0 only when:
 ## Current tests
 
 - Template contract tests reject incomplete LTX-2.3 workflows.
+- The canonical ComfyUI LTX-2.3 template is checked in and validated.
 - Template patcher tests verify that only manifest-declared controls are changed.
 - CLI contract tests verify `validate-template` and `patch-template`.
 - Job artifact tests reject success when `worker_stats.json` or `visual_check.json` is missing or failed.

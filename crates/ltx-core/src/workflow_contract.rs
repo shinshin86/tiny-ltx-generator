@@ -49,6 +49,8 @@ pub enum ContractError {
 #[derive(Debug, Deserialize)]
 struct Workflow {
     definitions: Option<Definitions>,
+    #[serde(default)]
+    nodes: Vec<Node>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,14 +80,15 @@ pub fn validate_ltx23_template(raw: &str) -> Result<TemplateContractReport, Cont
 
     let workflow: Workflow =
         serde_json::from_str(raw).map_err(|err| ContractError::InvalidJson(err.to_string()))?;
+    let top_level_nodes = workflow.nodes;
     let subgraph = workflow
         .definitions
         .and_then(|definitions| definitions.subgraphs.into_iter().next())
         .ok_or(ContractError::MissingSubgraph)?;
 
-    let node_types: BTreeSet<String> = subgraph
-        .nodes
+    let node_types: BTreeSet<String> = top_level_nodes
         .iter()
+        .chain(subgraph.nodes.iter())
         .filter_map(|node| node.node_type.clone().or(node.class_type.clone()))
         .collect();
 

@@ -30,6 +30,30 @@ fn validate_template_command_reports_contract_json() {
 }
 
 #[test]
+fn validate_template_command_accepts_canonical_comfy_template() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ltx-runner"))
+        .args([
+            "validate-template",
+            "--workflow",
+            fixture("ltx23_comfy_template.json").as_str(),
+            "--manifest",
+            fixture("ltx23_template_manifest.example.json").as_str(),
+            "--json",
+        ])
+        .output()
+        .expect("runner should execute");
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout must be JSON");
+    assert_eq!(value["valid"], true);
+    assert_eq!(value["node_count"], 46);
+}
+
+#[test]
 fn patch_template_command_outputs_patched_workflow_json() {
     let output = Command::new(env!("CARGO_BIN_EXE_ltx-runner"))
         .args([

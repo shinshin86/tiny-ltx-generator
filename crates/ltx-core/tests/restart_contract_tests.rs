@@ -32,6 +32,19 @@ fn ltx23_template_fixture_satisfies_required_node_contract() {
 }
 
 #[test]
+fn canonical_comfy_template_satisfies_required_node_contract() {
+    let raw = include_str!("../../../fixtures/ltx23_comfy_template.json");
+
+    let report = validate_ltx23_template(raw).expect("canonical template must satisfy contract");
+
+    assert_eq!(report.subgraph_name, "Text to Video (LTX-2.3)");
+    assert_eq!(report.node_count, 46);
+    assert!(report
+        .required_node_types
+        .contains(&"LTXVAudioVAEDecode".to_string()));
+}
+
+#[test]
 fn missing_core_template_nodes_are_rejected_before_generation() {
     let raw = r#"{"definitions":{"subgraphs":[{"name":"bad","nodes":[{"type":"CheckpointLoaderSimple"}]}]}}"#;
 

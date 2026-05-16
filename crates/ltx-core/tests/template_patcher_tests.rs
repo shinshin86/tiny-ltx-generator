@@ -75,6 +75,33 @@ fn template_patch_updates_only_manifested_user_controls() {
 }
 
 #[test]
+fn canonical_comfy_template_can_be_patched_by_manifest() {
+    let workflow = include_str!("../../../fixtures/ltx23_comfy_template.json");
+    let manifest = include_str!("../../../fixtures/ltx23_template_manifest.example.json");
+
+    let patched =
+        apply_template_patch(workflow, manifest, &request()).expect("canonical patch should pass");
+
+    assert_eq!(patched.changed_controls.len(), 17);
+    assert_widget(&patched.workflow, 266, 0, Value::String(request().prompt));
+    assert_widget(
+        &patched.workflow,
+        247,
+        0,
+        Value::String(request().negative_prompt),
+    );
+    assert_widget(&patched.workflow, 257, 0, Value::from(768));
+    assert_widget(&patched.workflow, 258, 0, Value::from(512));
+    assert_widget(&patched.workflow, 237, 0, Value::from(12345));
+    assert_widget(
+        &patched.workflow,
+        237,
+        1,
+        Value::String("fixed".to_string()),
+    );
+}
+
+#[test]
 fn manifest_node_type_mismatch_is_rejected_before_generation() {
     let workflow = include_str!("../../../fixtures/ltx23_comfy_template_minimal.json");
     let manifest = include_str!("../../../fixtures/ltx23_template_manifest.example.json")

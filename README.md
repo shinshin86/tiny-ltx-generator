@@ -18,12 +18,12 @@ Current verified commands:
 cargo test --workspace
 
 cargo run -p ltx-runner -- validate-template \
-  --workflow fixtures/ltx23_comfy_template_minimal.json \
+  --workflow fixtures/ltx23_comfy_template.json \
   --manifest fixtures/ltx23_template_manifest.example.json \
   --json
 
 cargo run -p ltx-runner -- patch-template \
-  --workflow fixtures/ltx23_comfy_template_minimal.json \
+  --workflow fixtures/ltx23_comfy_template.json \
   --manifest fixtures/ltx23_template_manifest.example.json \
   --prompt "a small orange cat walking through a sunlit room" \
   --negative-prompt "low quality, noisy, distorted" \
