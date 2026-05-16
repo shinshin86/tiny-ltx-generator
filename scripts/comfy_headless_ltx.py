@@ -56,7 +56,7 @@ def main():
             "message": "ComfyUI did not write a video file",
         }))
         return 1
-    if produced.resolve() != output_path.resolve():
+    if not _same_file(produced, output_path):
         shutil.copyfile(produced, output_path)
     print(json.dumps({"status": "success", "output_path": str(output_path)}))
     return 0
@@ -81,6 +81,7 @@ def _build_prompt(payload):
     first_width = width // 2 if spatial_upsampler else width
     first_height = height // 2 if spatial_upsampler else height
     first_sigmas = _first_stage_sigmas(steps)
+    second_stage_seed = int(model.get("second_stage_seed") or 42)
     prompt = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
         "2": {
@@ -125,7 +126,7 @@ def _build_prompt(payload):
                 "19": {"class_type": "LTXVLatentUpsampler", "inputs": {"samples": ["15", 0], "upscale_model": ["18", 0], "vae": ["1", 2]}},
                 "20": {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["19", 0], "audio_latent": ["15", 1]}},
                 "21": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_cfg_pp"}},
-                "22": {"class_type": "RandomNoise", "inputs": {"noise_seed": int(request["seed"])}},
+                "22": {"class_type": "RandomNoise", "inputs": {"noise_seed": second_stage_seed}},
                 "23": {"class_type": "ManualSigmas", "inputs": {"sigmas": "0.85, 0.7250, 0.4219, 0.0"}},
                 "24": {"class_type": "CFGGuider", "inputs": {"model": model_ref, "positive": ["16", 0], "negative": ["16", 1], "cfg": cfg}},
                 "25": {
@@ -143,7 +144,8 @@ def _build_prompt(payload):
                     "class_type": "VAEDecodeTiled",
                     "inputs": {"samples": ["26", 0], "vae": ["1", 2], "tile_size": 768, "overlap": 64, "temporal_size": 4096, "temporal_overlap": 4},
                 },
-                "28": {"class_type": "CreateVideo", "inputs": {"images": ["27", 0], "fps": fps}},
+                "30": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["26", 1], "audio_vae": ["7", 0]}},
+                "28": {"class_type": "CreateVideo", "inputs": {"images": ["27", 0], "fps": fps, "audio": ["30", 0]}},
                 "29": {
                     "class_type": "SaveVideo",
                     "inputs": {
@@ -162,7 +164,8 @@ def _build_prompt(payload):
                     "class_type": "VAEDecodeTiled",
                     "inputs": {"samples": ["15", 0], "vae": ["1", 2], "tile_size": 768, "overlap": 64, "temporal_size": 4096, "temporal_overlap": 4},
                 },
-                "19": {"class_type": "CreateVideo", "inputs": {"images": ["18", 0], "fps": fps}},
+                "21": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["15", 1], "audio_vae": ["7", 0]}},
+                "19": {"class_type": "CreateVideo", "inputs": {"images": ["18", 0], "fps": fps, "audio": ["21", 0]}},
                 "20": {
                     "class_type": "SaveVideo",
                     "inputs": {
@@ -195,6 +198,13 @@ def _find_latest_video(output_dir):
     if not candidates:
         return None
     return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def _same_file(left, right):
+    try:
+        return Path(left).resolve() == Path(right).resolve() or os.path.samefile(left, right)
+    except OSError:
+        return False
 
 
 if __name__ == "__main__":

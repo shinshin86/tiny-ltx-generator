@@ -8,7 +8,7 @@ VARIANT="${LTX_DOWNLOAD_VARIANT:-ltx2_3_dev_fp8_distilled_lora}"
 GEMMA_REPO="${LTX_GEMMA_REPO:-Lightricks/gemma-3-12b-it-qat-q4_0-unquantized}"
 TEXT_ENCODER_REPO="${LTX_TEXT_ENCODER_REPO:-Comfy-Org/ltx-2}"
 TEXT_ENCODER_FILE="${LTX_TEXT_ENCODER_FILE:-split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors}"
-SPATIAL_UPSCALER_FILE="${LTX_SPATIAL_UPSCALER_FILE:-ltx-2.3-spatial-upscaler-x2-1.0.safetensors}"
+SPATIAL_UPSCALER_FILE="${LTX_SPATIAL_UPSCALER_FILE:-ltx-2.3-spatial-upscaler-x2-1.1.safetensors}"
 mkdir -p "$MODEL_DIR"
 
 HF_ARGS=()

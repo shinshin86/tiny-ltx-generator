@@ -8,6 +8,8 @@ from ltx_worker.comfy_backend import ComfyLtxPipeline
 from ltx_worker.output import persist_result
 from ltx_worker.validators import validate_request
 from ltx_worker.errors import WorkerError
+import importlib.util
+from pathlib import Path
 import sys
 import types
 
@@ -509,6 +511,66 @@ def test_model_manager_loads_two_stage_pipeline_with_distilled_lora(monkeypatch)
     lora = calls[0]["distilled_lora"][0]
     assert lora.path.endswith("distilled-lora-384.safetensors")
     assert lora.sd_ops == "rename-map"
+
+
+def test_comfy_headless_prompt_matches_ltx_2_3_template_flow():
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "comfy_headless_ltx.py"
+    spec = importlib.util.spec_from_file_location("comfy_headless_ltx", script_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    prompt = module._build_prompt({
+        "request": {
+            "prompt": "a cat walking",
+            "negative_prompt": "low quality",
+            "width": 768,
+            "height": 512,
+            "frames": 49,
+            "fps": 12,
+            "steps": 8,
+            "guidance_scale": 1.0,
+            "seed": 12345,
+            "output_path": "/content/outputs/jobs/job/output.mp4",
+        },
+        "model": {
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "text_encoder_path": "/content/models/gemma_3_12B_it_fp4_mixed.safetensors",
+            "spatial_upsampler_path": "/content/models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+            "lora_path": "/content/models/ltx-2.3-22b-distilled-lora-384.safetensors",
+            "lora_strength": 0.5,
+        },
+    })
+
+    assert prompt["1"]["class_type"] == "CheckpointLoaderSimple"
+    assert prompt["2"]["class_type"] == "LTXAVTextEncoderLoader"
+    assert prompt["5"]["class_type"] == "LTXVConditioning"
+    assert prompt["6"]["inputs"] == {
+        "width": 384,
+        "height": 256,
+        "length": 49,
+        "batch_size": 1,
+    }
+    assert prompt["7"]["class_type"] == "LTXVAudioVAELoader"
+    assert prompt["8"]["class_type"] == "LTXVEmptyLatentAudio"
+    assert prompt["9"]["inputs"] == {"video_latent": ["6", 0], "audio_latent": ["8", 0]}
+    assert prompt["10"]["inputs"]["sampler_name"] == "euler_ancestral_cfg_pp"
+    assert prompt["12"]["inputs"]["sigmas"] == "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    assert prompt["17"]["inputs"] == {
+        "model": ["1", 0],
+        "lora_name": "ltx-2.3-22b-distilled-lora-384.safetensors",
+        "strength_model": 0.5,
+    }
+    assert prompt["18"]["inputs"]["model_name"] == "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    assert prompt["19"]["class_type"] == "LTXVLatentUpsampler"
+    assert prompt["20"]["inputs"] == {"video_latent": ["19", 0], "audio_latent": ["15", 1]}
+    assert prompt["21"]["inputs"]["sampler_name"] == "euler_cfg_pp"
+    assert prompt["22"]["inputs"]["noise_seed"] == 42
+    assert prompt["23"]["inputs"]["sigmas"] == "0.85, 0.7250, 0.4219, 0.0"
+    assert prompt["26"]["class_type"] == "LTXVSeparateAVLatent"
+    assert prompt["27"]["class_type"] == "VAEDecodeTiled"
+    assert prompt["30"]["class_type"] == "LTXVAudioVAEDecode"
+    assert prompt["28"]["inputs"] == {"images": ["27", 0], "fps": 12.0, "audio": ["30", 0]}
+    assert prompt["29"]["inputs"]["video"] == ["28", 0]
 
 
 def test_model_manager_loads_lora_from_top_level_loader_export(monkeypatch):

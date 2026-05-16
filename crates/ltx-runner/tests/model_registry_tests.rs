@@ -86,6 +86,7 @@ fn colab_download_scripts_track_default_low_vram_variant() {
     assert!(download_script.contains("ltx-2.3-22b-dev-fp8.safetensors"));
     assert!(download_script.contains("ltx-2.3-22b-distilled-lora-384.safetensors"));
     assert!(download_script.contains("gemma_3_12B_it_fp4_mixed.safetensors"));
+    assert!(download_script.contains("ltx-2.3-spatial-upscaler-x2-1.1.safetensors"));
     assert!(bootstrap_script.contains("scripts/setup_comfy_ltx_colab.sh"));
     assert!(download_script.contains("ltx-2.3-22b-distilled.safetensors"));
     assert!(download_script.contains("sulphur_2_dev_fp8mixed"));
@@ -98,6 +99,7 @@ fn colab_download_scripts_track_default_low_vram_variant() {
     assert!(example_registry.contains("ltx-2.3-22b-distilled.safetensors"));
     assert!(example_registry.contains("gemma_3_12B_it_fp4_mixed.safetensors"));
     assert!(example_registry.contains("backend = \"comfy_ltx\""));
+    assert!(example_registry.contains("ltx-2.3-spatial-upscaler-x2-1.1.safetensors"));
     assert!(example_registry.contains("sulphur_dev_fp8mixed.safetensors"));
     assert!(example_registry.contains("dev FP8 checkpoint plus distilled LoRA"));
 
@@ -114,7 +116,12 @@ fn comfy_headless_runner_uses_native_ltxv_clip_loader() {
     assert!(runner.contains("\"class_type\": \"LTXVEmptyLatentAudio\""));
     assert!(runner.contains("\"class_type\": \"LTXVConcatAVLatent\""));
     assert!(runner.contains("\"class_type\": \"LTXVLatentUpsampler\""));
+    assert!(runner.contains("\"class_type\": \"LTXVAudioVAEDecode\""));
     assert!(runner.contains("\"class_type\": \"ManualSigmas\""));
+    assert!(runner.contains("\"audio\": [\"30\", 0]"));
+    assert!(runner.contains("\"22\": {\"class_type\": \"RandomNoise\", \"inputs\": {\"noise_seed\": second_stage_seed}}"));
+    assert!(runner.contains("second_stage_seed = int(model.get(\"second_stage_seed\") or 42)"));
+    assert!(runner.contains("if not _same_file(produced, output_path):"));
     assert!(runner.contains("0.99375, 0.9875, 0.98125, 0.975"));
     assert!(runner.contains("0.85, 0.7250, 0.4219, 0.0"));
     assert!(!runner.contains("\"class_type\": \"CLIPLoader\""));

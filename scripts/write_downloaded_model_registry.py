@@ -13,7 +13,7 @@ def main():
     model_dir = Path(args.model_dir)
     gemma = model_dir / "gemma-3-12b-it-qat-q4_0-unquantized"
     text_encoder = model_dir / "gemma_3_12B_it_fp4_mixed.safetensors"
-    spatial = model_dir / "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+    spatial = model_dir / "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
     paths = {
         "ltx2_3_full": model_dir / "ltx-2.3-22b-dev.safetensors",
         "ltx2_3_fp8": model_dir / "ltx-2.3-22b-dev-fp8.safetensors",
