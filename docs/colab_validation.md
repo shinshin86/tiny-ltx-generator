@@ -1,6 +1,6 @@
 # Colab Validation
 
-The Colab validation flow should be reproducible from notebook cells and from Colab MCP.
+The Colab validation flow should be reproducible from notebook cells and external notebook automation tools.
 
 1. Start an A100 runtime when available.
 2. Clone or update `https://github.com/shinshin86/tiny-ltx-generator`.

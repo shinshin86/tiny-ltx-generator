@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use ltx_core::comfy_api::workflow_value_to_api_prompt;
 use ltx_core::job_artifacts::REQUIRED_SUCCESS_FILES;
-use ltx_core::reset_plan::restart_plan;
+use ltx_core::project_plan::project_plan;
 use ltx_core::template_patcher::{apply_template_patch, TemplatePatchRequest};
 use ltx_core::workflow_contract::validate_ltx23_template;
 use serde_json::json;
@@ -86,7 +86,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Plan) {
         Command::Plan => {
-            let plan = restart_plan();
+            let plan = project_plan();
             println!("{}", plan.primary_goal);
         }
         Command::ValidateTemplate {

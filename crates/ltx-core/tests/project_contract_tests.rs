@@ -1,17 +1,17 @@
-use ltx_core::reset_plan::restart_plan;
+use ltx_core::project_plan::project_plan;
 use ltx_core::workflow_contract::{validate_ltx23_template, ContractError};
 
 #[test]
-fn restart_plan_keeps_the_actual_goal_visible() {
-    let plan = restart_plan();
+fn project_plan_keeps_the_public_goal_visible() {
+    let plan = project_plan();
 
     assert!(plan
         .primary_goal
-        .contains("official ComfyUI LTX-2.3 lightweight workflow"));
+        .contains("lightweight LTX video generation workflows"));
     assert!(plan.primary_goal.contains("Rust CLI"));
     assert!(plan
         .non_goals
-        .contains(&"No handcrafted replacement for the LTX sampler graph in Phase 1."));
+        .contains(&"No handwritten replacement for the LTX sampler graph in Phase 1."));
     assert_eq!(plan.phases[0].name, "contract-first");
 }
 
