@@ -337,9 +337,9 @@ pub(crate) fn validate_model_support(
 fn validate_quantization_support(model_entry: &ltx_core::ModelEntry) -> Result<()> {
     match model_entry.quantization.as_deref().unwrap_or("none") {
         "none" => Ok(()),
-        "fp8-cast" if looks_like_distilled_fp8_checkpoint(model_entry) => {
+        "fp8-cast" if looks_like_fp8_checkpoint(model_entry) => {
             Err(AppError::Unsupported(format!(
-                "{} config requests fp8-cast for a distilled FP8 checkpoint; use dev FP8 + distilled LoRA or BF16 distilled instead",
+                "{} config requests fp8-cast for an FP8 checkpoint; load FP8 checkpoints with quantization = \"none\"",
                 model_entry.display_name
             ))
             .into())
@@ -354,7 +354,7 @@ fn validate_quantization_support(model_entry: &ltx_core::ModelEntry) -> Result<(
     }
 }
 
-fn looks_like_distilled_fp8_checkpoint(model_entry: &ltx_core::ModelEntry) -> bool {
+fn looks_like_fp8_checkpoint(model_entry: &ltx_core::ModelEntry) -> bool {
     model_entry
         .checkpoint_path
         .as_deref()
@@ -362,7 +362,7 @@ fn looks_like_distilled_fp8_checkpoint(model_entry: &ltx_core::ModelEntry) -> bo
         .and_then(|name| name.to_str())
         .map(|name| {
             let name = name.to_ascii_lowercase();
-            name.contains("distilled") && name.contains("fp8")
+            name.contains("fp8")
         })
         .unwrap_or(false)
 }

@@ -40,12 +40,12 @@ fn model_registry_quantization_flags_are_consistent() {
             .as_deref()
             .unwrap_or("")
             .to_ascii_lowercase()
-            .contains("distilled-fp8")
+            .contains("fp8")
         {
             assert_eq!(
                 model.quantization.as_deref().unwrap_or("none"),
                 "none",
-                "{id} is a distilled FP8 checkpoint entry and must not request fp8-cast"
+                "{id} is an FP8 checkpoint entry and must not request fp8-cast"
             );
         }
     }
@@ -54,8 +54,8 @@ fn model_registry_quantization_flags_are_consistent() {
         .models
         .get("ltx2_3_dev_fp8_distilled_lora")
         .unwrap();
-    assert_eq!(comfy_style.quantization.as_deref(), Some("fp8-cast"));
-    assert!(comfy_style.supports_fp8_cast);
+    assert_eq!(comfy_style.quantization.as_deref(), Some("none"));
+    assert!(!comfy_style.supports_fp8_cast);
     assert!(comfy_style
         .lora_path
         .as_deref()

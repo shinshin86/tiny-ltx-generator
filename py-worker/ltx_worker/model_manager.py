@@ -30,6 +30,8 @@ class ModelManager:
                     "DistilledPipeline requires a distilled model; provide a config_path for non-distilled variants",
                 )
             self.pipeline = self._load_distilled_pipeline(pipeline_cls, model_entry, kwargs, offload_mode)
+        elif pipeline_cls.__name__ == "TI2VidTwoStagesPipeline":
+            self.pipeline = self._load_two_stage_pipeline(pipeline_cls, model_entry, kwargs)
         elif pipeline_cls.__name__ == "TI2VidOneStagePipeline":
             self.pipeline = self._load_one_stage_pipeline(pipeline_cls, model_entry, kwargs)
         elif hasattr(pipeline_cls, "from_config"):
@@ -61,10 +63,10 @@ class ModelManager:
         if not mode or mode == "none":
             return {}
         checkpoint_path = model_entry.get("checkpoint_path") or ""
-        if mode == "fp8-cast" and _looks_like_distilled_fp8_checkpoint(checkpoint_path):
+        if mode == "fp8-cast" and _looks_like_fp8_checkpoint(checkpoint_path):
             raise WorkerError(
                 "unsupported_option",
-                "ltx-2.3 distilled FP8 with fp8-cast is known to produce invalid output; use dev FP8 + distilled LoRA or BF16 distilled",
+                "fp8-cast must not be applied to FP8 checkpoint files; load FP8 checkpoints with quantization='none'",
             )
         if mode == "fp8-cast" and not model_entry.get("supports_fp8_cast"):
             raise WorkerError("unsupported_option", "model registry says fp8-cast is unsupported")
@@ -138,6 +140,33 @@ class ModelManager:
         filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
         return pipeline_cls(**filtered)
 
+    def _load_two_stage_pipeline(self, pipeline_cls, model_entry, kwargs):
+        checkpoint_path = model_entry.get("checkpoint_path")
+        gemma_root = model_entry.get("gemma_root")
+        spatial_upsampler_path = model_entry.get("spatial_upsampler_path")
+        missing = [
+            name
+            for name, value in [
+                ("checkpoint_path", checkpoint_path),
+                ("gemma_root", gemma_root),
+                ("spatial_upsampler_path", spatial_upsampler_path),
+            ]
+            if not value
+        ]
+        if missing:
+            raise WorkerError("missing_model_files", f"TI2VidTwoStagesPipeline requires: {', '.join(missing)}")
+        signature = inspect.signature(pipeline_cls)
+        init_kwargs = {
+            "checkpoint_path": checkpoint_path,
+            "gemma_root": gemma_root,
+            "spatial_upsampler_path": spatial_upsampler_path,
+            "distilled_lora": _lora_specs(model_entry),
+            "loras": (),
+        }
+        init_kwargs.update(kwargs)
+        filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
+        return pipeline_cls(**filtered)
+
     def _offload_mode(self, profile):
         requested = os.environ.get("LTX_OFFLOAD_MODE")
         if not requested and profile in {"colab_tiny", "colab_eco"}:
@@ -171,9 +200,9 @@ def _is_distilled_model(model_key, model_entry):
     return any("distilled" in value.lower() or "distil" in value.lower() for value in values)
 
 
-def _looks_like_distilled_fp8_checkpoint(path):
+def _looks_like_fp8_checkpoint(path):
     name = os.path.basename(path).lower()
-    return "distilled" in name and "fp8" in name
+    return "fp8" in name
 
 
 def _lora_specs(model_entry):

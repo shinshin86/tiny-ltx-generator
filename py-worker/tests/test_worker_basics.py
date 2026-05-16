@@ -81,12 +81,28 @@ def test_model_manager_rejects_fp8_cast_on_fp8_checkpoint():
         })
     except WorkerError as exc:
         assert exc.code == "unsupported_option"
-        assert "distilled FP8" in exc.message
+        assert "FP8 checkpoint" in exc.message
     else:
         raise AssertionError("fp8-cast should not be applied to distilled FP8 checkpoint files")
 
 
-def test_model_manager_allows_fp8_cast_on_dev_fp8_checkpoint(monkeypatch):
+def test_model_manager_rejects_fp8_cast_on_dev_fp8_checkpoint():
+    manager = ModelManager(lambda *_args: None)
+    try:
+        manager._quantization_kwargs({
+            "quantization": "fp8-cast",
+            "supports_fp8_cast": True,
+            "supports_fp8_scaled_mm": False,
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+        })
+    except WorkerError as exc:
+        assert exc.code == "unsupported_option"
+        assert "FP8 checkpoint" in exc.message
+    else:
+        raise AssertionError("fp8-cast should not be applied to dev FP8 checkpoint files")
+
+
+def test_model_manager_allows_fp8_cast_on_bf16_checkpoint(monkeypatch):
     class FakePolicy:
         @staticmethod
         def fp8_cast():
@@ -102,7 +118,7 @@ def test_model_manager_allows_fp8_cast_on_dev_fp8_checkpoint(monkeypatch):
         "quantization": "fp8-cast",
         "supports_fp8_cast": True,
         "supports_fp8_scaled_mm": False,
-        "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+        "checkpoint_path": "/content/models/ltx-2.3-22b-dev.safetensors",
     }) == {"quantization": "fp8-cast-policy"}
 
 
@@ -263,6 +279,66 @@ def test_model_manager_loads_one_stage_pipeline_with_lora(monkeypatch):
     lora = calls[0]["loras"][0]
     assert lora.path.endswith("distilled-lora-384.safetensors")
     assert lora.strength == 0.8
+    assert lora.sd_ops == "rename-map"
+
+
+def test_model_manager_loads_two_stage_pipeline_with_distilled_lora(monkeypatch):
+    calls = []
+
+    class FakeLora(tuple):
+        def __new__(cls, path, strength, sd_ops):
+            value = tuple.__new__(cls, (path, strength, sd_ops))
+            value.path = path
+            value.strength = strength
+            value.sd_ops = sd_ops
+            return value
+
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_core.loader",
+        types.SimpleNamespace(
+            LoraPathStrengthAndSDOps=FakeLora,
+            LTXV_LORA_COMFY_RENAMING_MAP="rename-map",
+        ),
+    )
+
+    class TI2VidTwoStagesPipeline:
+        def __init__(
+            self,
+            checkpoint_path,
+            gemma_root,
+            spatial_upsampler_path,
+            distilled_lora,
+            loras,
+            quantization=None,
+        ):
+            calls.append({
+                "checkpoint_path": checkpoint_path,
+                "gemma_root": gemma_root,
+                "spatial_upsampler_path": spatial_upsampler_path,
+                "distilled_lora": distilled_lora,
+                "loras": loras,
+                "quantization": quantization,
+            })
+
+    manager = ModelManager(lambda *_args: None)
+    manager._load_two_stage_pipeline(
+        TI2VidTwoStagesPipeline,
+        {
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "gemma_root": "/content/models/gemma",
+            "spatial_upsampler_path": "/content/models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+            "lora_path": "/content/models/ltx-2.3-22b-distilled-lora-384.safetensors",
+            "lora_strength": 1.0,
+        },
+        {"quantization": "q"},
+    )
+
+    assert calls[0]["loras"] == ()
+    assert calls[0]["quantization"] == "q"
+    lora = calls[0]["distilled_lora"][0]
+    assert lora.path.endswith("distilled-lora-384.safetensors")
     assert lora.sd_ops == "rename-map"
 
 

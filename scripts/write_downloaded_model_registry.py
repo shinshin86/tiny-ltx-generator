@@ -81,9 +81,7 @@ notes = "{notes}"
         paths["ltx2_3_fp8"] if enabled == "ltx2_3_fp8" else "",
         True,
         '["colab_balanced", "colab_quality"]',
-        "Configured only when downloaded. FP8 dev checkpoint loaded with fp8-cast for Colab memory.",
-        supports_fp8_cast=True,
-        quantization="fp8-cast",
+        "Configured only when downloaded. FP8 dev checkpoint; load without an additional fp8-cast pass.",
     )
     registry += entry(
         "ltx2_3_dev_fp8_distilled_lora",
@@ -91,9 +89,7 @@ notes = "{notes}"
         paths["ltx2_3_dev_fp8_distilled_lora"] if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
         True,
         '["colab_tiny", "colab_eco", "colab_balanced", "colab_quality"]',
-        "ComfyUI-style setup: official dev FP8 checkpoint plus distilled LoRA. Preferred Colab default.",
-        supports_fp8_cast=True,
-        quantization="fp8-cast",
+        "ComfyUI-style setup: official dev FP8 checkpoint plus distilled LoRA. Preferred Colab default; load without an additional fp8-cast pass.",
         lora_path=distilled_lora if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
         lora_strength="1.0" if enabled == "ltx2_3_dev_fp8_distilled_lora" else "0.0",
     )
