@@ -60,6 +60,12 @@ class ModelManager:
         mode = model_entry.get("quantization")
         if not mode or mode == "none":
             return {}
+        checkpoint_path = model_entry.get("checkpoint_path") or ""
+        if mode == "fp8-cast" and _looks_like_distilled_fp8_checkpoint(checkpoint_path):
+            raise WorkerError(
+                "unsupported_option",
+                "ltx-2.3 distilled FP8 with fp8-cast is known to produce invalid output; use dev FP8 + distilled LoRA or BF16 distilled",
+            )
         if mode == "fp8-cast" and not model_entry.get("supports_fp8_cast"):
             raise WorkerError("unsupported_option", "model registry says fp8-cast is unsupported")
         if mode == "fp8-scaled-mm" and not model_entry.get("supports_fp8_scaled_mm"):
@@ -101,7 +107,7 @@ class ModelManager:
             "distilled_checkpoint_path": checkpoint_path,
             "gemma_root": gemma_root,
             "spatial_upsampler_path": spatial_upsampler_path,
-            "loras": (),
+            "loras": _lora_specs(model_entry),
         }
         if offload_mode is not None:
             init_kwargs["offload_mode"] = offload_mode
@@ -126,7 +132,7 @@ class ModelManager:
         init_kwargs = {
             "checkpoint_path": checkpoint_path,
             "gemma_root": gemma_root,
-            "loras": (),
+            "loras": _lora_specs(model_entry),
         }
         init_kwargs.update(kwargs)
         filtered = {key: value for key, value in init_kwargs.items() if key in signature.parameters}
@@ -163,3 +169,22 @@ def _is_distilled_model(model_key, model_entry):
         model_entry.get("checkpoint_path") or "",
     ]
     return any("distilled" in value.lower() or "distil" in value.lower() for value in values)
+
+
+def _looks_like_distilled_fp8_checkpoint(path):
+    name = os.path.basename(path).lower()
+    return "distilled" in name and "fp8" in name
+
+
+def _lora_specs(model_entry):
+    lora_path = model_entry.get("lora_path")
+    if not lora_path:
+        return ()
+    strength = float(model_entry.get("lora_strength") or 1.0)
+    try:
+        from ltx_core.loader import LoraPathStrengthAndSDOps, LTXV_LORA_COMFY_RENAMING_MAP
+    except Exception:
+        from ltx_core.loader.primitives import LoraPathStrengthAndSDOps
+        from ltx_core.loader.sd_ops import LTXV_LORA_COMFY_RENAMING_MAP
+
+    return (LoraPathStrengthAndSDOps(lora_path, strength, LTXV_LORA_COMFY_RENAMING_MAP),)

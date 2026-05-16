@@ -27,11 +27,12 @@ bash scripts/bootstrap_colab.sh --download-models
 
 The bootstrap script installs Rust, `uv`, and `ffmpeg` only when missing, builds `ltx-runner`, prepares `/content/outputs`, `/content/ltx_tmp`, and `/content/models`, then runs `ltx-runner check`.
 
-Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8`, which downloads the official LTX 2.3 distilled FP8 checkpoint, spatial upscaler, and Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
+Large model files are downloaded only when `--download-models` is passed. The default download target is `LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora`, which downloads the official LTX 2.3 dev FP8 checkpoint, distilled LoRA, spatial upscaler, and Gemma text encoder into `/content/models`, then writes `configs/model_registry.toml`.
 
 Other supported setup variants:
 
 ```bash
+LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_distilled bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_fp8 bash scripts/bootstrap_colab.sh --download-models
 LTX_DOWNLOAD_VARIANT=ltx2_3_full bash scripts/bootstrap_colab.sh --download-models
@@ -40,7 +41,9 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
 
 Set `HF_TOKEN` when Hugging Face access requires authentication.
 
-Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are experimental in this project, are not selected by `--model auto`, and should be visually validated before batch use. The Sulphur FP8-mixed checkpoint is loaded without an additional `fp8-cast` pass until that path is verified. Sulphur's model card also references a distill LoRA workflow; this CLI does not apply LoRA adapters yet, so only the configured checkpoint path is loaded.
+The default LTX 2.3 path mirrors the lightweight ComfyUI-style setup without importing ComfyUI: official dev FP8 checkpoint plus distilled LoRA. The standalone `ltx2_3_distilled_fp8` checkpoint remains configurable, but it is not the preferred default because it has produced invalid/noisy output with an extra `fp8-cast` pass.
+
+Community LTX 2.3-derived variants can be used explicitly after download, for example `--model sulphur_2_dev_fp8mixed`. They are experimental in this project, are not selected by `--model auto`, and should be visually validated before batch use. The Sulphur FP8-mixed checkpoint is loaded without an additional `fp8-cast` pass until that path is verified.
 
 ## Configure Model Paths
 
@@ -66,16 +69,18 @@ This reports OS, disk, Drive mount state, Python, `uv`, Rust, `ffmpeg`, `nvidia-
 ```bash
 ./target/release/ltx-runner generate \
   --profile colab_balanced \
-  --model ltx2_3_distilled_fp8 \
+  --model ltx2_3_dev_fp8_distilled_lora \
   --mode text-to-video \
   --prompt "a cinematic shot of a small white dog walking through Tokyo at night, realistic, soft lighting" \
   --width 768 \
   --height 512 \
   --frames 49 \
-  --fps 24 \
+  --fps 12 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
+
+`colab_balanced` caps FPS at 12. For 24 FPS on A100 or similar GPUs, use `colab_quality`.
 
 Outputs are written under:
 

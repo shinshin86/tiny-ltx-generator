@@ -70,6 +70,42 @@ def test_model_manager_rejects_unsupported_registry_quantization():
         raise AssertionError("unsupported quantization should fail")
 
 
+def test_model_manager_rejects_fp8_cast_on_fp8_checkpoint():
+    manager = ModelManager(lambda *_args: None)
+    try:
+        manager._quantization_kwargs({
+            "quantization": "fp8-cast",
+            "supports_fp8_cast": True,
+            "supports_fp8_scaled_mm": False,
+            "checkpoint_path": "/content/models/ltx-2.3-22b-distilled-fp8.safetensors",
+        })
+    except WorkerError as exc:
+        assert exc.code == "unsupported_option"
+        assert "distilled FP8" in exc.message
+    else:
+        raise AssertionError("fp8-cast should not be applied to distilled FP8 checkpoint files")
+
+
+def test_model_manager_allows_fp8_cast_on_dev_fp8_checkpoint(monkeypatch):
+    class FakePolicy:
+        @staticmethod
+        def fp8_cast():
+            return "fp8-cast-policy"
+
+    fake_policy_module = types.SimpleNamespace(QuantizationPolicy=FakePolicy)
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(sys.modules, "ltx_core.quantization", types.ModuleType("ltx_core.quantization"))
+    monkeypatch.setitem(sys.modules, "ltx_core.quantization.policy", fake_policy_module)
+
+    manager = ModelManager(lambda *_args: None)
+    assert manager._quantization_kwargs({
+        "quantization": "fp8-cast",
+        "supports_fp8_cast": True,
+        "supports_fp8_scaled_mm": False,
+        "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+    }) == {"quantization": "fp8-cast-policy"}
+
+
 def test_model_manager_reuses_loaded_pipeline_without_reimport():
     events = []
     manager = ModelManager(lambda *_args: events.append(_args))
@@ -177,6 +213,100 @@ def test_model_manager_loads_one_stage_pipeline():
         "loras": (),
         "quantization": "q",
     }]
+
+
+def test_model_manager_loads_one_stage_pipeline_with_lora(monkeypatch):
+    calls = []
+
+    class FakeLora(tuple):
+        def __new__(cls, path, strength, sd_ops):
+            value = tuple.__new__(cls, (path, strength, sd_ops))
+            value.path = path
+            value.strength = strength
+            value.sd_ops = sd_ops
+            return value
+
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(sys.modules, "ltx_core.loader", types.ModuleType("ltx_core.loader"))
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_core.loader.primitives",
+        types.SimpleNamespace(LoraPathStrengthAndSDOps=FakeLora),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ltx_core.loader.sd_ops",
+        types.SimpleNamespace(LTXV_LORA_COMFY_RENAMING_MAP="rename-map"),
+    )
+
+    class TI2VidOneStagePipeline:
+        def __init__(self, checkpoint_path, gemma_root, loras, quantization=None):
+            calls.append({
+                "checkpoint_path": checkpoint_path,
+                "gemma_root": gemma_root,
+                "loras": loras,
+                "quantization": quantization,
+            })
+
+    manager = ModelManager(lambda *_args: None)
+    manager._load_one_stage_pipeline(
+        TI2VidOneStagePipeline,
+        {
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "gemma_root": "/content/models/gemma",
+            "lora_path": "/content/models/ltx-2.3-22b-distilled-lora-384.safetensors",
+            "lora_strength": 0.8,
+        },
+        {"quantization": "q"},
+    )
+
+    lora = calls[0]["loras"][0]
+    assert lora.path.endswith("distilled-lora-384.safetensors")
+    assert lora.strength == 0.8
+    assert lora.sd_ops == "rename-map"
+
+
+def test_model_manager_loads_lora_from_top_level_loader_export(monkeypatch):
+    calls = []
+
+    class FakeLora(tuple):
+        def __new__(cls, path, strength, sd_ops):
+            value = tuple.__new__(cls, (path, strength, sd_ops))
+            value.path = path
+            value.strength = strength
+            value.sd_ops = sd_ops
+            return value
+
+    fake_loader = types.SimpleNamespace(
+        LoraPathStrengthAndSDOps=FakeLora,
+        LTXV_LORA_COMFY_RENAMING_MAP="top-level-rename-map",
+    )
+    monkeypatch.setitem(sys.modules, "ltx_core", types.ModuleType("ltx_core"))
+    monkeypatch.setitem(sys.modules, "ltx_core.loader", fake_loader)
+
+    class TI2VidOneStagePipeline:
+        def __init__(self, checkpoint_path, gemma_root, loras, quantization=None):
+            calls.append({
+                "checkpoint_path": checkpoint_path,
+                "gemma_root": gemma_root,
+                "loras": loras,
+                "quantization": quantization,
+            })
+
+    manager = ModelManager(lambda *_args: None)
+    manager._load_one_stage_pipeline(
+        TI2VidOneStagePipeline,
+        {
+            "checkpoint_path": "/content/models/ltx-2.3-22b-dev-fp8.safetensors",
+            "gemma_root": "/content/models/gemma",
+            "lora_path": "/content/models/ltx-2.3-22b-distilled-lora-384.safetensors",
+        },
+        {},
+    )
+
+    lora = calls[0]["loras"][0]
+    assert lora.strength == 1.0
+    assert lora.sd_ops == "top-level-rename-map"
 
 
 def test_generator_maps_request_to_pipeline_kwargs(monkeypatch):
@@ -288,6 +418,66 @@ def test_generator_skips_unsupported_optional_pipeline_kwargs(monkeypatch):
         "height": 512,
         "num_frames": 33,
         "seed": 123,
+    }]
+
+
+def test_generator_distilled_signature_does_not_receive_guidance_or_steps(monkeypatch):
+    class InferenceMode:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    calls = []
+
+    class DistilledLikePipeline:
+        def __call__(self, prompt, seed, height, width, num_frames, frame_rate, images):
+            calls.append({
+                "prompt": prompt,
+                "seed": seed,
+                "height": height,
+                "width": width,
+                "num_frames": num_frames,
+                "frame_rate": frame_rate,
+                "images": images,
+            })
+            return object()
+
+    fake_torch = types.SimpleNamespace(no_grad=lambda: InferenceMode())
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("ltx_worker.generate.persist_result", lambda _result, path, **_kwargs: path)
+
+    generator = Generator(lambda *_args: None)
+    generator.models.pipeline = DistilledLikePipeline()
+    generator.models.load = lambda *_args: None
+
+    result = generator.generate("req", {
+        "request": {
+            "mode": "text-to-video",
+            "prompt": "cat",
+            "negative_prompt": "noise",
+            "width": 768,
+            "height": 512,
+            "frames": 49,
+            "fps": 24,
+            "seed": 12345,
+            "steps": 8,
+            "guidance_scale": 3.0,
+            "output_path": "/tmp/out.mp4",
+        },
+        "model": {"id": "ltx2_3_distilled_fp8"},
+    })
+
+    assert result["output_path"] == "/tmp/out.mp4"
+    assert calls == [{
+        "prompt": "cat",
+        "seed": 12345,
+        "height": 512,
+        "width": 768,
+        "num_frames": 49,
+        "frame_rate": 24.0,
+        "images": [],
     }]
 
 

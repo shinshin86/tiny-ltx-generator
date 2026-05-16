@@ -39,6 +39,7 @@ pub fn model_key(model: ModelId) -> &'static str {
         ModelId::Auto => "auto",
         ModelId::Ltx2_3Full => "ltx2_3_full",
         ModelId::Ltx2_3Fp8 => "ltx2_3_fp8",
+        ModelId::Ltx2_3DevFp8DistilledLora => "ltx2_3_dev_fp8_distilled_lora",
         ModelId::Ltx2_3DistilledFp8 => "ltx2_3_distilled_fp8",
         ModelId::Ltx2_3Distilled => "ltx2_3_distilled",
         ModelId::Sulphur2DevBf16 => "sulphur_2_dev_bf16",
@@ -51,18 +52,21 @@ pub fn model_key(model: ModelId) -> &'static str {
 pub fn preferred_models(profile: ProfileId) -> Vec<ModelId> {
     match profile {
         ProfileId::ColabTiny | ProfileId::ColabEco | ProfileId::NoGpu | ProfileId::Auto => vec![
+            ModelId::Ltx2_3DevFp8DistilledLora,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
             ModelId::Ltx2_3Fp8,
             ModelId::Ltxv13bDistilledFp8,
         ],
         ProfileId::ColabBalanced => vec![
+            ModelId::Ltx2_3DevFp8DistilledLora,
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3DistilledFp8,
             ModelId::Ltx2_3Distilled,
             ModelId::Ltx2_3Full,
         ],
         ProfileId::ColabQuality => vec![
+            ModelId::Ltx2_3DevFp8DistilledLora,
             ModelId::Ltx2_3Fp8,
             ModelId::Ltx2_3Full,
             ModelId::Ltx2_3DistilledFp8,
@@ -90,6 +94,7 @@ pub fn missing_paths(entry: &ModelEntry) -> Vec<String> {
             entry.vae_path.as_deref(),
             entry.spatial_upsampler_path.as_deref(),
             entry.temporal_upsampler_path.as_deref(),
+            entry.lora_path.as_deref(),
             entry.config_path.as_deref(),
         ]
         .into_iter()
@@ -123,6 +128,8 @@ mod tests {
             vae_path: None,
             spatial_upsampler_path: None,
             temporal_upsampler_path: None,
+            lora_path: None,
+            lora_strength: None,
             config_path: None,
             supports_audio: false,
             supports_t2v: true,
@@ -153,6 +160,19 @@ mod tests {
     }
 
     #[test]
+    fn missing_paths_reports_absent_lora_files() {
+        let mut model = entry(Some("".to_string()));
+        let checkpoint = NamedTempFile::new().unwrap();
+        model.checkpoint_path = Some(checkpoint.path().display().to_string());
+        model.lora_path = Some("/definitely/missing/distilled-lora.safetensors".to_string());
+
+        assert_eq!(
+            missing_paths(&model),
+            vec!["/definitely/missing/distilled-lora.safetensors"]
+        );
+    }
+
+    #[test]
     fn missing_paths_accepts_existing_files() {
         let file = NamedTempFile::new().unwrap();
         assert!(missing_paths(&entry(Some(file.path().display().to_string()))).is_empty());
@@ -161,7 +181,7 @@ mod tests {
     #[test]
     fn auto_model_order_prefers_distilled_for_tiny() {
         let models = preferred_models(ProfileId::ColabTiny);
-        assert_eq!(models[0], ModelId::Ltx2_3DistilledFp8);
+        assert_eq!(models[0], ModelId::Ltx2_3DevFp8DistilledLora);
     }
 
     #[test]
@@ -171,7 +191,7 @@ mod tests {
             "sulphur_2_dev_fp8mixed"
         );
         let quality = preferred_models(ProfileId::ColabQuality);
-        assert_eq!(quality[0], ModelId::Ltx2_3Fp8);
+        assert_eq!(quality[0], ModelId::Ltx2_3DevFp8DistilledLora);
         assert!(!quality.contains(&ModelId::Sulphur2DevFp8Mixed));
         assert!(!preferred_models(ProfileId::ColabTiny).contains(&ModelId::Sulphur2DistilBf16));
         assert!(!preferred_models(ProfileId::ColabBalanced).contains(&ModelId::Sulphur2DevBf16));

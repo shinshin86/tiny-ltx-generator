@@ -16,17 +16,32 @@ def main():
     paths = {
         "ltx2_3_full": model_dir / "ltx-2.3-22b-dev.safetensors",
         "ltx2_3_fp8": model_dir / "ltx-2.3-22b-dev-fp8.safetensors",
+        "ltx2_3_dev_fp8_distilled_lora": model_dir / "ltx-2.3-22b-dev-fp8.safetensors",
         "ltx2_3_distilled_fp8": model_dir / "ltx-2.3-22b-distilled-fp8.safetensors",
         "ltx2_3_distilled": model_dir / "ltx-2.3-22b-distilled.safetensors",
         "sulphur_2_dev_bf16": model_dir / "sulphur_dev_bf16.safetensors",
         "sulphur_2_dev_fp8mixed": model_dir / "sulphur_dev_fp8mixed.safetensors",
         "sulphur_2_distil_bf16": model_dir / "sulphur_distil_bf16.safetensors",
     }
+    distilled_lora = model_dir / "ltx-2.3-22b-distilled-lora-384.safetensors"
     enabled = args.variant
     if enabled not in paths:
         raise SystemExit(f"unsupported variant: {enabled}")
 
-    def entry(key, display, checkpoint, supports_audio, fp8, preferred, notes, spatial_path=None):
+    def entry(
+        key,
+        display,
+        checkpoint,
+        supports_audio,
+        preferred,
+        notes,
+        spatial_path=None,
+        supports_fp8_cast=False,
+        supports_fp8_scaled_mm=False,
+        quantization="none",
+        lora_path="",
+        lora_strength="0.0",
+    ):
         if spatial_path is None:
             spatial_path = spatial
         return f'''
@@ -39,12 +54,14 @@ text_encoder_path = ""
 vae_path = ""
 spatial_upsampler_path = "{spatial_path}"
 temporal_upsampler_path = ""
+lora_path = "{lora_path}"
+lora_strength = {lora_strength}
 supports_audio = {str(supports_audio).lower()}
 supports_t2v = true
 supports_i2v = true
-supports_fp8_cast = {str(fp8).lower()}
-supports_fp8_scaled_mm = false
-quantization = "{'fp8-cast' if fp8 else 'none'}"
+supports_fp8_cast = {str(supports_fp8_cast).lower()}
+supports_fp8_scaled_mm = {str(supports_fp8_scaled_mm).lower()}
+quantization = "{quantization}"
 preferred_profiles = {preferred}
 notes = "{notes}"
 '''
@@ -55,7 +72,6 @@ notes = "{notes}"
         "LTX 2.3 full",
         paths["ltx2_3_full"] if enabled == "ltx2_3_full" else "",
         True,
-        False,
         '["colab_quality"]',
         "Configured only when downloaded.",
     )
@@ -64,24 +80,35 @@ notes = "{notes}"
         "LTX 2.3 FP8",
         paths["ltx2_3_fp8"] if enabled == "ltx2_3_fp8" else "",
         True,
-        True,
         '["colab_balanced", "colab_quality"]',
-        "Configured only when downloaded.",
+        "Configured only when downloaded. FP8 dev checkpoint loaded with fp8-cast for Colab memory.",
+        supports_fp8_cast=True,
+        quantization="fp8-cast",
+    )
+    registry += entry(
+        "ltx2_3_dev_fp8_distilled_lora",
+        "LTX 2.3 dev FP8 + distilled LoRA",
+        paths["ltx2_3_dev_fp8_distilled_lora"] if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
+        True,
+        '["colab_tiny", "colab_eco", "colab_balanced", "colab_quality"]',
+        "ComfyUI-style setup: official dev FP8 checkpoint plus distilled LoRA. Preferred Colab default.",
+        supports_fp8_cast=True,
+        quantization="fp8-cast",
+        lora_path=distilled_lora if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
+        lora_strength="1.0" if enabled == "ltx2_3_dev_fp8_distilled_lora" else "0.0",
     )
     registry += entry(
         "ltx2_3_distilled_fp8",
         "LTX 2.3 distilled FP8",
         paths["ltx2_3_distilled_fp8"] if enabled == "ltx2_3_distilled_fp8" else "",
         False,
-        True,
         '["colab_tiny", "colab_eco", "colab_balanced"]',
-        "Configured only when downloaded.",
+        "Configured only when downloaded. FP8 checkpoint; load without an additional fp8-cast pass.",
     )
     registry += entry(
         "ltx2_3_distilled",
         "LTX 2.3 distilled",
         paths["ltx2_3_distilled"] if enabled == "ltx2_3_distilled" else "",
-        False,
         False,
         '["colab_tiny", "colab_eco", "colab_balanced"]',
         "BF16 distilled variant. Use when FP8 is unavailable or not desired.",
@@ -91,7 +118,6 @@ notes = "{notes}"
         "Sulphur 2 dev BF16",
         paths["sulphur_2_dev_bf16"] if enabled == "sulphur_2_dev_bf16" else "",
         True,
-        False,
         '["colab_quality"]',
         "Community LTX 2.3-derived full model. Use explicitly with --model sulphur_2_dev_bf16.",
         spatial_path="",
@@ -101,7 +127,6 @@ notes = "{notes}"
         "Sulphur 2 dev FP8 mixed",
         paths["sulphur_2_dev_fp8mixed"] if enabled == "sulphur_2_dev_fp8mixed" else "",
         True,
-        False,
         '["colab_balanced", "colab_quality"]',
         "Experimental community LTX 2.3-derived FP8 mixed full model. Use explicitly with --model sulphur_2_dev_fp8mixed. Loaded without additional fp8-cast until visually validated.",
         spatial_path="",
@@ -110,7 +135,6 @@ notes = "{notes}"
         "sulphur_2_distil_bf16",
         "Sulphur 2 distil BF16",
         paths["sulphur_2_distil_bf16"] if enabled == "sulphur_2_distil_bf16" else "",
-        False,
         False,
         '["colab_tiny", "colab_eco", "colab_balanced"]',
         "Community LTX 2.3-derived distilled model. Use explicitly with --model sulphur_2_distil_bf16.",
@@ -128,11 +152,11 @@ temporal_upsampler_path = ""
 supports_audio = false
 supports_t2v = true
 supports_i2v = true
-supports_fp8_cast = true
+supports_fp8_cast = false
 supports_fp8_scaled_mm = false
-quantization = "fp8-cast"
+quantization = "none"
 preferred_profiles = ["colab_tiny", "colab_eco"]
-notes = "Optional fallback. Not downloaded by default."
+notes = "Optional FP8 fallback. Not downloaded by default; load without an additional fp8-cast pass."
 '''
     Path(args.output).write_text(registry, encoding="utf-8")
 

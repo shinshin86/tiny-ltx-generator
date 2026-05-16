@@ -56,7 +56,7 @@ class JsonlWorker:
                     "suggested_width": 512,
                     "suggested_height": 512,
                     "suggested_frames": 33,
-                    "suggested_model": "ltx2_3_distilled_fp8",
+                    "suggested_model": "ltx2_3_dev_fp8_distilled_lora",
                 })
             else:
                 self.emit(request_id, "error", {"code": "worker_error", "message": text})

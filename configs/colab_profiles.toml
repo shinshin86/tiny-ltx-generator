@@ -4,7 +4,7 @@ height = 512
 frames = 33
 fps = 8
 steps = 8
-preferred_model = "ltx2_3_distilled_fp8"
+preferred_model = "ltx2_3_dev_fp8_distilled_lora"
 
 [profiles.colab_eco]
 width = 512
@@ -12,7 +12,7 @@ height = 512
 frames = 49
 fps = 12
 steps = 8
-preferred_model = "ltx2_3_distilled_fp8"
+preferred_model = "ltx2_3_dev_fp8_distilled_lora"
 
 [profiles.colab_balanced]
 width = 768
@@ -20,7 +20,7 @@ height = 512
 frames = 65
 fps = 12
 steps = 20
-preferred_model = "ltx2_3_fp8"
+preferred_model = "ltx2_3_dev_fp8_distilled_lora"
 
 [profiles.colab_quality]
 width = 1280
@@ -28,4 +28,4 @@ height = 720
 frames = 97
 fps = 16
 steps = 30
-preferred_model = "ltx2_3_fp8"
+preferred_model = "ltx2_3_dev_fp8_distilled_lora"

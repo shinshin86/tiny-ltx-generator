@@ -32,10 +32,10 @@ Recommended paths:
 The default path is to download models into `/content/models` on each setup:
 
 ```bash
-LTX_DOWNLOAD_VARIANT=ltx2_3_distilled_fp8 bash scripts/bootstrap_colab.sh --download-models
+LTX_DOWNLOAD_VARIANT=ltx2_3_dev_fp8_distilled_lora bash scripts/bootstrap_colab.sh --download-models
 ```
 
-This keeps Drive optional. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
+This keeps Drive optional. The default downloads the official dev FP8 checkpoint plus distilled LoRA, matching the lightweight LTX 2.3 setup used by current ComfyUI workflows without importing ComfyUI. Use `LTX_DOWNLOAD_VARIANT=ltx2_3_distilled` when FP8 is unavailable or not desired. If repeated runtimes need persistence, you can still keep large downloads in Drive and copy or symlink selected files into `/content/models`. Edit `configs/model_registry.toml` so every required file path is explicit.
 
 To try the experimental Sulphur 2 LTX 2.3-derived model explicitly:
 
@@ -52,7 +52,7 @@ LTX_DOWNLOAD_VARIANT=sulphur_2_dev_fp8mixed bash scripts/bootstrap_colab.sh --do
   --jsonl-events
 ```
 
-Sulphur variants are not selected by `--model auto`. Validate the first output visually before using them in batch jobs. The upstream model card references a distill LoRA workflow, but this CLI does not apply LoRA adapters yet.
+Sulphur variants are not selected by `--model auto`. Validate the first output visually before using them in batch jobs.
 
 ## CLI From Notebook Cells
 
@@ -66,10 +66,12 @@ Sulphur variants are not selected by `--model auto`. Validate the first output v
   --model auto \
   --mode text-to-video \
   --prompt "a cinematic shot of a small white dog walking through Tokyo at night" \
-  --width 768 --height 512 --frames 49 --fps 24 \
+  --width 768 --height 512 --frames 49 --fps 12 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
+
+`colab_balanced` caps FPS at 12. For 24 FPS on A100 or similar GPUs, use `colab_quality`.
 
 Use a landscape LTX-shaped smoke test such as `768x512` for quality checks. `512x512` is only kept for low-VRAM fallback and CUDA OOM retry paths.
 

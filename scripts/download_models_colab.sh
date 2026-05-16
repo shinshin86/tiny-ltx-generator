@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 MODEL_DIR="${LTX_MODEL_DIR:-/content/models}"
-VARIANT="${LTX_DOWNLOAD_VARIANT:-ltx2_3_distilled_fp8}"
+VARIANT="${LTX_DOWNLOAD_VARIANT:-ltx2_3_dev_fp8_distilled_lora}"
 GEMMA_REPO="${LTX_GEMMA_REPO:-Lightricks/gemma-3-12b-it-qat-q4_0-unquantized}"
 mkdir -p "$MODEL_DIR"
 
@@ -48,6 +48,12 @@ case "$VARIANT" in
     ;;
   ltx2_3_fp8)
     hf_download Lightricks/LTX-2.3-fp8 "ltx-2.3-22b-dev-fp8.safetensors" "$MODEL_DIR"
+    hf_download Lightricks/LTX-2.3 "ltx-2.3-spatial-upscaler-x2-1.1.safetensors" "$MODEL_DIR"
+    download_gemma
+    ;;
+  ltx2_3_dev_fp8_distilled_lora)
+    hf_download Lightricks/LTX-2.3-fp8 "ltx-2.3-22b-dev-fp8.safetensors" "$MODEL_DIR"
+    hf_download Lightricks/LTX-2.3 "ltx-2.3-22b-distilled-lora-384.safetensors" "$MODEL_DIR"
     hf_download Lightricks/LTX-2.3 "ltx-2.3-spatial-upscaler-x2-1.1.safetensors" "$MODEL_DIR"
     download_gemma
     ;;

@@ -3,8 +3,10 @@
 Batch input is JSONL: one JSON object per line.
 
 ```json
-{"id":"dog-tokyo-001","mode":"text-to-video","prompt":"a cinematic shot of a small white dog walking through Tokyo at night","negative_prompt":"low quality, blurry","seed":12345,"width":768,"height":512,"frames":49,"fps":24,"profile":"colab_balanced","model":"auto"}
+{"id":"dog-tokyo-001","mode":"text-to-video","prompt":"a cinematic shot of a small white dog walking through Tokyo at night","negative_prompt":"low quality, blurry","seed":12345,"width":768,"height":512,"frames":49,"fps":12,"profile":"colab_balanced","model":"auto"}
 ```
+
+`colab_balanced` caps FPS at 12. For 24 FPS on A100 or similar GPUs, use `colab_quality`.
 
 Run:
 

@@ -10,7 +10,7 @@ Exit code `4` means CUDA GPU generation is unavailable. `ltx-runner check --json
 
 ## CUDA OOM
 
-Exit code `5` means the worker caught a CUDA out-of-memory error. Use `colab_tiny`, fewer frames, smaller resolution, and distilled FP8 if available.
+Exit code `5` means the worker caught a CUDA out-of-memory error. Use `colab_tiny`, fewer frames, smaller resolution, and the dev FP8 plus distilled LoRA default when available.
 
 ## Valid MP4 But Noise Or Static
 
@@ -19,13 +19,15 @@ A valid `output.mp4` only proves encoding succeeded. If the video looks like noi
 ```bash
 ./target/release/ltx-runner generate \
   --profile colab_balanced \
-  --model ltx2_3_distilled_fp8 \
+  --model ltx2_3_dev_fp8_distilled_lora \
   --mode text-to-video \
   --prompt "a small cat walking across a sunlit wooden floor, realistic video" \
-  --width 768 --height 512 --frames 49 --fps 24 \
+  --width 768 --height 512 --frames 49 --fps 12 \
   --out-dir /content/outputs \
   --jsonl-events
 ```
+
+`colab_balanced` caps FPS at 12. For 24 FPS on A100 or similar GPUs, use `colab_quality`.
 
 Common causes are a wrong model/pipeline pairing, an experimental community checkpoint, applying extra FP8 casting to a checkpoint that is already FP8-mixed, too few steps for a full/dev model, using a checkpoint that expects a LoRA workflow without applying that LoRA, or using the 512x512 low-memory fallback as a quality check. For full/dev models, start around `--steps 40`; distilled models can use fewer steps. Sulphur variants must be selected explicitly and visually validated before batch use.
 

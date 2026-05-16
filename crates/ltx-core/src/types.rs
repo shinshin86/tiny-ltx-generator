@@ -25,6 +25,8 @@ pub enum ModelId {
     Auto,
     Ltx2_3Full,
     Ltx2_3Fp8,
+    #[serde(rename = "ltx2_3_dev_fp8_distilled_lora")]
+    Ltx2_3DevFp8DistilledLora,
     Ltx2_3DistilledFp8,
     Ltx2_3Distilled,
     #[serde(rename = "sulphur_2_dev_bf16")]
@@ -130,6 +132,8 @@ pub struct ModelEntry {
     pub vae_path: Option<String>,
     pub spatial_upsampler_path: Option<String>,
     pub temporal_upsampler_path: Option<String>,
+    pub lora_path: Option<String>,
+    pub lora_strength: Option<f32>,
     pub config_path: Option<String>,
     pub supports_audio: bool,
     pub supports_t2v: bool,

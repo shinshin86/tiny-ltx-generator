@@ -7,6 +7,10 @@ def preferred_pipeline_names(model_key, profile):
         return [
             ("ltx_pipelines.ti2vid_one_stage", "TI2VidOneStagePipeline"),
         ]
+    if model_key == "ltx2_3_dev_fp8_distilled_lora":
+        return [
+            ("ltx_pipelines.ti2vid_one_stage", "TI2VidOneStagePipeline"),
+        ]
     distilled = "distilled" in model_key or "distil" in model_key or profile in LOW_VRAM_PROFILES
     if distilled:
         return [
