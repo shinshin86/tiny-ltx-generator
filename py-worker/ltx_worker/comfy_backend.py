@@ -134,6 +134,7 @@ class ComfyLtxPipeline:
         return {
             "checkpoint_path": self.model_entry.get("checkpoint_path") or "",
             "lora_path": self.model_entry.get("lora_path") or "",
+            "lora_strength": self.model_entry.get("lora_strength") or 0.5,
             "text_encoder_path": text_encoder_path,
             "spatial_upsampler_path": self.model_entry.get("spatial_upsampler_path") or "",
         }

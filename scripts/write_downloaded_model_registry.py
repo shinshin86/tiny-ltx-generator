@@ -98,7 +98,7 @@ notes = "{notes}"
         '["colab_tiny", "colab_eco", "colab_balanced", "colab_quality"]',
         "ComfyUI-style setup: official dev FP8 checkpoint plus distilled LoRA. Preferred Colab default; load without an additional fp8-cast pass.",
         lora_path=distilled_lora if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
-        lora_strength="1.0" if enabled == "ltx2_3_dev_fp8_distilled_lora" else "0.0",
+        lora_strength="0.5" if enabled == "ltx2_3_dev_fp8_distilled_lora" else "0.0",
         text_encoder_path=text_encoder if enabled == "ltx2_3_dev_fp8_distilled_lora" else "",
         gemma_root="",
         extra='{ backend = "comfy_ltx" }',

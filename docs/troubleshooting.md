@@ -35,6 +35,8 @@ Common causes are a wrong model/pipeline pairing, an experimental community chec
 
 For ComfyUI-like LTX 2.3 runs, verify that the model set includes the FP8 checkpoint, distilled LoRA, spatial upscaler, and a quantized split Gemma text encoder. The default Comfy-compatible backend consumes `text_encoder_path`; missing or empty values fail early instead of pretending generation succeeded.
 
+The headless Comfy route must keep the LTX 2.3 conditioning and latent shape intact. It should use the core `LTXAVTextEncoderLoader`, `LTXVConditioning`, video/audio latent concat, the distilled LoRA at the configured strength, and the Comfy-style manual sigma schedule. A plain `CLIPLoader(type="ltxv")` plus image-only latent path can load the text encoder but still fail or produce invalid output because LTX 2.3 expects AV conditioning.
+
 ## Unsupported Pipeline
 
 Exit code `8` means the installed `ltx-pipelines` package does not expose the requested pipeline or option. Check package version and `config_path`.

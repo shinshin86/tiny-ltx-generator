@@ -70,6 +70,7 @@ fn model_registry_quantization_flags_are_consistent() {
         .as_deref()
         .unwrap_or("")
         .contains("gemma_3_12B_it_fp4_mixed"));
+    assert_eq!(comfy_style.lora_strength, Some(0.5));
 }
 
 #[test]
@@ -109,8 +110,14 @@ fn colab_download_scripts_track_default_low_vram_variant() {
 fn comfy_headless_runner_uses_native_ltxv_clip_loader() {
     let runner = fs::read_to_string("../../scripts/comfy_headless_ltx.py").unwrap();
 
-    assert!(runner.contains("\"class_type\": \"CLIPLoader\""));
-    assert!(runner.contains("\"type\": \"ltxv\""));
+    assert!(runner.contains("\"class_type\": \"LTXAVTextEncoderLoader\""));
+    assert!(runner.contains("\"class_type\": \"LTXVEmptyLatentAudio\""));
+    assert!(runner.contains("\"class_type\": \"LTXVConcatAVLatent\""));
+    assert!(runner.contains("\"class_type\": \"LTXVLatentUpsampler\""));
+    assert!(runner.contains("\"class_type\": \"ManualSigmas\""));
+    assert!(runner.contains("0.99375, 0.9875, 0.98125, 0.975"));
+    assert!(runner.contains("0.85, 0.7250, 0.4219, 0.0"));
+    assert!(!runner.contains("\"class_type\": \"CLIPLoader\""));
     assert!(!runner.contains("\"class_type\": \"LTXVGemmaCLIPModelLoader\""));
     assert!(runner.contains("init_api_nodes=False"));
 }
