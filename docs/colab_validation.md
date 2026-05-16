@@ -13,6 +13,19 @@ The Colab validation flow should be reproducible from notebook cells and from Co
 
 The first real generation test must run through the template-driven path, not a handcrafted prompt dictionary.
 
+## One-command smoke
+
+For the current TDD path, use:
+
+```bash
+cd /content/tiny-ltx-generator
+scripts/run_ltx23_cat_smoke_colab.sh
+```
+
+This command is intentionally Colab-only. It installs Rust if needed, installs ComfyUI and ComfyUI-LTXVideo, downloads the model files referenced by the canonical LTX-2.3 template, runs `cargo test --workspace`, builds `ltx-runner`, prepares the job artifacts, and runs `scripts/comfy_headless_adapter.py` without `--dry-run`.
+
+The smoke script must fail if `output.mp4` is missing or empty. A later visual gate should replace the current file-size check with frame-level inspection so corrupted video cannot be reported as success.
+
 ## Pre-generation checks
 
 Before running the ComfyUI adapter on Colab, run:
@@ -25,3 +38,16 @@ Before running the ComfyUI adapter on Colab, run:
 ```
 
 The checked-in canonical workflow fixture is the actual ComfyUI LTX-2.3 template. The manifest must be updated alongside it, and tests must fail if the node ids or widget indexes drift.
+
+## Required ComfyUI model locations
+
+The setup script downloads into the ComfyUI directories used by the template:
+
+```text
+/content/ComfyUI/models/checkpoints/ltx-2.3-22b-dev-fp8.safetensors
+/content/ComfyUI/models/loras/ltx-2.3-22b-distilled-lora-384.safetensors
+/content/ComfyUI/models/latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors
+/content/ComfyUI/models/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors
+```
+
+If a gated artifact ever requires authentication, set `HF_TOKEN` in the Colab environment. The token must not be written to the repository or to job metadata.
